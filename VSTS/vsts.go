@@ -5,8 +5,14 @@ import (
 	"net/http"
 	"github.com/spf13/viper"
 	"net/url"
-	"encoding/base64"
+	"io/ioutil"
+	"strings"
 )
+
+var PullRequestsUriTemplate string = "DefaultCollection/{project}/_apis/git/pullRequests?api-version={apiVersion}&reviewerId={reviewerId}"
+var CommentsUriTemplate string = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
+var eviewerUriTemplate string = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
+var vstsBaseUri string = "https://msazure.visualstudio.com/"
 
 func setUpConfig(){
 	viper.SetConfigName("config.dev") 
@@ -18,23 +24,25 @@ func setUpConfig(){
 }
 
 
-func getZillowSearchResult(address string, citystatezip string){
-	u, err := url.Parse("https://msazure.visualstudio.com/")
-	
+func gettest(){
+	u, err := url.Parse(vstsBaseUri)
 	if err != nil{
 		panic(err)
 	}
 
+	r := strings.NewReplacer(	"{project}", viper.GetString("vstsProject"),
+            					"{apiVersion}", viper.GetString("vstsApiVersion"))
 
-	//test := "DefaultCollection/{project}/_apis/git/pullRequests?api-version={apiVersion}&reviewerId={reviewerId}"
 
-	zwsId := viper.GetString("zwsId")
+
+
+	result := r.Replace(PullRequestsUriTemplate)
+	fmt.Println(result)
 
 	q := u.Query()
 
-	q.Add("zws-id",zwsId)
-	q.Add("address", address)
-	q.Add("citystatezip",citystatezip)
+	// q.Add("address", address)
+	// q.Add("citystatezip",citystatezip)
 
 	u.RawQuery = q.Encode()
 	fmt.Println(u)
@@ -42,14 +50,21 @@ func getZillowSearchResult(address string, citystatezip string){
 
 
 
-func initialize(){
-
+func initalize(){
 	setUpConfig()
-
 	client := &http.Client{}
+	url := "https://msazure.VisualStudio.com/DefaultCollection/_apis/projects?api-version=2.0"
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Add("Authorization","Basic " + string(base64.StdEncoding.EncodeToString([]byte(viper.GetString("vstsToken")))))
-	res, _ := client.Do(req)
+	username := viper.GetString("vstsUsername")
+	token := viper.GetString("vstsToken")
+	fmt.Println(username,token)
+	req.SetBasicAuth(username, token)
 
-	fmt.Println(res)
+	res, _ := client.Do(req)
+	bodyText, err := ioutil.ReadAll(res.Body)
+	if err != nil{
+		panic(err)
+	}
+	fmt.Println(string(bodyText))
+
 }
