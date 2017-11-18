@@ -10,10 +10,11 @@ type ReviewSummary struct{
 	ReviewType		string
 }
 
-func (reviewSummary *ReviewSummary) GetReviewSummary(pullRequest VstsPullRequest){
-	reviewSummary.Id = pullRequest.Id
-	reviewSummary.AuthorEmail = pullRequest.Author.Email
-	reviewSummary.AuthorVstsId = pullRequest.Author.VisualStudioId
-	reviewSummary.RepositoryId = pullRequest.Repository.Id
-	reviewSummary.ReviewType = "VstsPullRequest"
+func NewReviewSummary(pullRequest VstsPullRequest) ReviewSummary {
+	return ReviewSummary{
+		Id: pullRequest.Id,
+		AuthorEmail: pullRequest.Author.Email,
+		AuthorVstsId: pullRequest.Author.VisualStudioId,
+		RepositoryId: pullRequest.Repository.Id,
+		ReviewType: "VstsPullRequest"}
 }
