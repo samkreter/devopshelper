@@ -1,18 +1,23 @@
 package VSTS
 
 import (
+	"log"
 	"fmt"
 	"net/http"
 	"github.com/spf13/viper"
 	"net/url"
 	"io/ioutil"
 	"strings"
+	"encoding/json"
+	"time"
 )
 
 type config struct {
-	VstsToken 		string	`json:"vstsToken"`
-	VstsProject		string	`json:"vstsProject"`
-	VstsUsername	string	`json:"vstsUsername"`
+	VstsToken 			string	`json:"vstsToken"`
+	VstsProject			string	`json:"vstsProject"`
+	VstsUsername		string	`json:"vstsUsername"`
+	VstsRepositoryId	string	`json:"repositoryId"`
+	VstsArmReviewerId	string 	`json:"vstsArmReviewerId"`
 }
 
 var (
@@ -47,46 +52,59 @@ func init(){
 	fmt.Println(conf)
 }
 
-//TODO: set up correct replacements
-func GetCommentsUri() string{
-	r := strings.NewReplacer(	"{project}", 	viper.GetString("vstsProject"),
-							 	"{apiVersion}", ApiVersion)
+func GetCommentsUri(pullRequestId string, repositoryId string) string{
+	r := strings.NewReplacer(	"{repositoryId}", 	repositoryId,
+								"{pullRequestId", 	pullRequestId,
+							 	"{apiVersion}", 	ApiVersion)
 	return fmt.Sprintf("%s%s",VstsBaseUri,r.Replace(ReviewerUriTemplate))
 }
 
-//TODO set up correct replacements
-func GetReviewerUri() string{
-	r := strings.NewReplacer(	"{repositoryId}", 	conf.VstsProject,
-								"{pullRequestId", 	"pullRequestId",
-								"{reviewerId}",		"reviewerId",
+func GetReviewerUri(repositoryId string, pullRequestId string, reviewerId string) string{
+	r := strings.NewReplacer(	"{repositoryId}", 	repositoryId,
+								"{pullRequestId", 	pullRequestId,
+								"{reviewerId}",		reviewerId,
 							 	"{apiVersion}", 	ApiVersion)
 	return fmt.Sprintf("%s%s",VstsBaseUri,r.Replace(ReviewerUriTemplate))
 }
 
 func GetPullRequestsUri() string{
-	r := strings.NewReplacer("{project}", viper.GetString("vstsProject"),
-							"{apiVersion}", ApiVersion)
+	r := strings.NewReplacer(	"{project}", 		conf.VstsProject,
+							 	"{reviewerId}",		conf.VstsArmReviewerId,
+								"{apiVersion}", 	ApiVersion)
 	return fmt.Sprintf("%s%s",VstsBaseUri,r.Replace(PullRequestsUriTemplate))
 }
 
-// func GetInprogressReviews(){
+func GetJsonResponse(url string, target interface{}) error {
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, _ := http.NewRequest("GET", url, nil)
+	req.SetBasicAuth(conf.VstsUsername, conf.VstsToken)
 
-// 	client := &http.Client{}
-// 	url := GetPullRequestsUri()
-// 	req, _ := http.NewRequest("GET", url, nil)
-// 	req.SetBasicAuth(username, token)
+	res, err := client.Do(req)
+	if err != nil {
+        return err
+    }
+	
+	defer res.Body.Close()
 
-// 	res, _ := client.Do(req)
+    return json.NewDecoder(res.Body).Decode(target)
+}
 
+func GetInprogressReviews() []ReviewSummary{
+	url := GetPullRequestsUri()
 
-// 	var pullRequests = await response.Content
-// 		.ReadAsAsync<VisualStudioPullRequests>()
-// 		.ConfigureAwait(continueOnCapturedContext: false);
+	pullRequests := new(VstsPullRequests)
+	err := GetJsonResponse(url, pullRequests)
+	if err != nil{
+		log.Fatal(err)
+	}
 
-//    return pullRequests.PullRequests
-// 		.Select(pr => ReviewSummary.GetReviewSummary(pr))
-// 		.ToArray();
-// }
+	reviewSummaries := make([]ReviewSummary,len(pullRequests.PullRequests))
+	for index, pullRequest := range pullRequests.PullRequests{
+		reviewSummary := new(ReviewSummary)
+		reviewSummaries[index] = reviewSummary.GetReviewSummary(pullRequest)
+	}
+	return reviewSummaries
+}
 
 func gettest(){
 	u, err := url.Parse(VstsBaseUri)
