@@ -1,4 +1,4 @@
-package VSTS
+package vsts
 
 import (
 	"testing"

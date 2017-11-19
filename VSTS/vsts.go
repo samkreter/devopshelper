@@ -1,4 +1,4 @@
-package VSTS
+package vsts
 
 import (
 	"log"
@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"time"
 	"bytes"
+	"github.com/samkreter/VSTSAutoReviewer/review"
 )
 
 type config struct {
@@ -21,14 +22,13 @@ type config struct {
 }
 
 var (
-	conf *config
+	Conf *config
 	PullRequestsUriTemplate string = "DefaultCollection/{project}/_apis/git/pullRequests?api-version={apiVersion}&reviewerId={reviewerId}"
 	CommentsUriTemplate string = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
 	ReviewerUriTemplate string = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
 	VstsBaseUri string = "https://msazure.visualstudio.com/"
 	ApiVersion string = "3.0"
 )
-
 
 func getConf() *config {
 	viper.AddConfigPath(".")
@@ -48,8 +48,7 @@ func getConf() *config {
 }
 
 func init(){
-	conf = getConf()
-	fmt.Println(conf)
+	Conf = getConf()
 }
 
 func GetCommentsUri(pullRequestId string, repositoryId string) string{
@@ -68,8 +67,8 @@ func GetReviewerUri(repositoryId string, pullRequestId string, reviewerId string
 }
 
 func GetPullRequestsUri() string{
-	r := strings.NewReplacer(	"{project}", 		conf.VstsProject,
-							 	"{reviewerId}",		conf.VstsArmReviewerId,
+	r := strings.NewReplacer(	"{project}", 		Conf.VstsProject,
+							 	"{reviewerId}",		Conf.VstsArmReviewerId,
 								"{apiVersion}", 	ApiVersion)
 	return fmt.Sprintf("%s%s",VstsBaseUri,r.Replace(PullRequestsUriTemplate))
 }
@@ -79,7 +78,7 @@ func PostJson(url string, jsonData interface{}) error {
 	json.NewEncoder(b).Encode(jsonData)
 
     req, err := http.NewRequest("POST", url, b)	
-    req.SetBasicAuth(conf.VstsUsername, conf.VstsToken)
+    req.SetBasicAuth(Conf.VstsUsername, Conf.VstsToken)
 	req.Header.Set("Content-Type", "application/json")
 
     client := &http.Client{}
@@ -99,7 +98,7 @@ func PostJson(url string, jsonData interface{}) error {
 func GetJsonResponse(url string, target interface{}) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.SetBasicAuth(conf.VstsUsername, conf.VstsToken)
+	req.SetBasicAuth(Conf.VstsUsername, Conf.VstsToken)
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -123,7 +122,7 @@ func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool{
 	if threads != nil{
 		for _, thread := range threads.CommentThreads{
 			for _, comment := range thread.Comments{
-				if strings.Contains(comment.Content, conf.VstsBotMaker){
+				if strings.Contains(comment.Content, Conf.VstsBotMaker){
 					return true
 				}
 			}
@@ -158,7 +157,7 @@ func AddRootComment(reviewSummary ReviewSummary, comment string){
 	}
 }
 
-func AddReviewers(reviewSummary ReviewSummary, required []Reviewer, optional []Reviewer){
+func AddReviewers(reviewSummary ReviewSummary, required []review.Reviewer, optional []review.Reviewer){
 	for _, reviewer := range append(required,optional...){
 		url := GetReviewerUri(reviewSummary.RepositoryId, reviewSummary.Id, reviewer.VisualStudioId)
 		vote := NewDefaultVisualStudioReviewerVote()

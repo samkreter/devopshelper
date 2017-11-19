@@ -1,5 +1,5 @@
 
-package VSTS
+package vsts
 
 type VstsCommentThreads struct{
 	CommentThreads 	[]VstsCommentThread 	`json:"value"`

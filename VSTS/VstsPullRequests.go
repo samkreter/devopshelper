@@ -1,4 +1,8 @@
-package VSTS
+package vsts
+
+import (
+	"github.com/samkreter/VSTSAutoReviewer/review"
+)
 
 type VstsPullRequests struct{
 	PullRequests []VstsPullRequest `json:"value"`
@@ -6,17 +10,20 @@ type VstsPullRequests struct{
 
 type VstsPullRequest struct
 {
-	Id 			string 					`json:"pullRequestId"`
-	Author 		Reviewer  				`json:"createdBy"`
+	Id 			string 			`json:"pullRequestId"`
+	Author 		review.Reviewer `json:"createdBy"`
 	Repository 	VstsRepository  `json:"repository"`
 }
 
 type VstsRepository struct{
-	Id string `json:"id"`
+	Id 	string 	`json:"id"`
 }
 
-type Reviewer struct{
-	VisualStudioId string `json:"id"`
-	Email string `json:"uniqueName"`
-	Alias string `json:"alias"`
+func NewReviewSummary(pullRequest VstsPullRequest) ReviewSummary {
+	return ReviewSummary{
+		Id: pullRequest.Id,
+		AuthorEmail: pullRequest.Author.Email,
+		AuthorVstsId: pullRequest.Author.VisualStudioId,
+		RepositoryId: pullRequest.Repository.Id,
+		ReviewType: "VstsPullRequest"}
 }
