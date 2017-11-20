@@ -7,8 +7,8 @@ import (
 )
 
 type Reviewers struct{
-	optional []Reviewer
-	required []Reviewer
+	Optional 	[]Reviewer 		`json:"optional"`
+	Required 	[]Reviewer		`json:"required"`
 }
 
 type Reviewer struct{
@@ -35,5 +35,5 @@ func LoadReviewers() ([]Reviewer,[]Reviewer){
     var reviewers Reviewers
     json.Unmarshal(rawData, &reviewers)
 	
-	return reviewers.required,reviewers.optional
+	return reviewers.Required,reviewers.Optional
 }
