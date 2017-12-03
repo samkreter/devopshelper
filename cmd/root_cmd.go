@@ -17,13 +17,12 @@ func Run() error {
 	return nil
 }
 
-func balanceReview(reviewSummary vsts.ReviewSummary) {
-	if !vsts.ContainsReviewBalancerComment(reviewSummary) {
+func balanceReview(review vsts.ReviewSummary) {
+	if !vsts.ContainsReviewBalancerComment(review) {
 
-		//need reiew iteration algo to change reviewers
-		requiredReviewers, optionalReviewers := vsts.LoadReviewers()
+		requiredReviewers, optionalReviewers := vsts.GetNextReviewers(review)
 
-		vsts.AddReviewers(reviewSummary, requiredReviewers, optionalReviewers)
+		vsts.AddReviewers(review, requiredReviewers, optionalReviewers)
 
 		comment := fmt.Sprintf(
 			"Hello %s,\r\n\r\n"+

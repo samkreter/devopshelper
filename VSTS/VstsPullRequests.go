@@ -18,7 +18,7 @@ func NewReviewSummary(pullRequest VstsPullRequest) ReviewSummary {
 	return ReviewSummary{
 		Id:           pullRequest.ID,
 		AuthorEmail:  pullRequest.Author.Email,
-		AuthorVstsId: pullRequest.Author.VisualStudioId,
+		AuthorVstsID: pullRequest.Author.VisualStudioId,
 		RepositoryId: pullRequest.Repository.ID,
 		ReviewType:   "VstsPullRequest"}
 }
