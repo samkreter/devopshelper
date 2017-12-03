@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samkreter/VSTSAutoReviewer/review"
 	"github.com/spf13/viper"
 )
 
@@ -111,7 +110,7 @@ func GetJsonResponse(url string, target interface{}) error {
 	return json.NewDecoder(res.Body).Decode(target)
 }
 
-func ContainsReviewBalancerComment(reviewSummary review.ReviewSummary) bool {
+func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
 	url := GetCommentsUri(reviewSummary.RepositoryId, reviewSummary.Id)
 
 	threads := new(VstsCommentThreads)
@@ -132,7 +131,7 @@ func ContainsReviewBalancerComment(reviewSummary review.ReviewSummary) bool {
 	return false
 }
 
-func GetInprogressReviews() []review.ReviewSummary {
+func GetInprogressReviews() []ReviewSummary {
 	url := GetPullRequestsUri()
 
 	pullRequests := new(VstsPullRequests)
@@ -141,14 +140,14 @@ func GetInprogressReviews() []review.ReviewSummary {
 		log.Fatal(err)
 	}
 
-	reviewSummaries := make([]review.ReviewSummary, len(pullRequests.PullRequests))
+	reviewSummaries := make([]ReviewSummary, len(pullRequests.PullRequests))
 	for index, pullRequest := range pullRequests.PullRequests {
 		reviewSummaries[index] = NewReviewSummary(pullRequest)
 	}
 	return reviewSummaries
 }
 
-func AddRootComment(reviewSummary review.ReviewSummary, comment string) {
+func AddRootComment(reviewSummary ReviewSummary, comment string) {
 	thread := NewVstsCommentThread(comment)
 
 	url := GetCommentsUri(reviewSummary.RepositoryId, reviewSummary.Id)
@@ -158,7 +157,7 @@ func AddRootComment(reviewSummary review.ReviewSummary, comment string) {
 	}
 }
 
-func AddReviewers(reviewSummary review.ReviewSummary, required []review.Reviewer, optional []review.Reviewer) {
+func AddReviewers(reviewSummary ReviewSummary, required []Reviewer, optional []Reviewer) {
 	for _, reviewer := range append(required, optional...) {
 		url := GetReviewerUri(reviewSummary.RepositoryId, reviewSummary.Id, reviewer.VisualStudioId)
 		vote := NewDefaultVisualStudioReviewerVote()
