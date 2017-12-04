@@ -20,8 +20,8 @@ func Run() error {
 func balanceReview(review vsts.ReviewSummary) {
 	if !vsts.ContainsReviewBalancerComment(review) {
 
-		requiredReviewers, optionalReviewers := vsts.GetNextReviewers(review)
-
+		requiredReviewers, optionalReviewers := vsts.GetReviewers(review)
+		
 		vsts.AddReviewers(review, requiredReviewers, optionalReviewers)
 
 		comment := fmt.Sprintf(

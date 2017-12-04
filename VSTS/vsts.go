@@ -21,6 +21,7 @@ type config struct {
 	VstsBotMaker      string `json:"vstsBotMaker"`
 }
 
+
 var (
 	Conf                    *config
 	PullRequestsUriTemplate string = "DefaultCollection/{project}/_apis/git/pullRequests?api-version={apiVersion}&reviewerId={reviewerId}"

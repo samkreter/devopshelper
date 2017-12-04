@@ -1,38 +1,49 @@
 package vsts
 
 import (
+	"fmt"
 	"testing"
+	"os"
+	"io"
 
 	"github.com/stretchr/testify/assert"
 )
 
 var (
-	actualReviewers = Reviewers{
-		Required: []Reviewer{
-			{
-				VisualStudioId: "asdfalksjdfji33u34ii",
-				Email:          "sakreter@microsoft.com",
-				Alias:          "sakreter",
+	out io.Writer = os.Stdout
+	expectedReviewerGroups = ReviewerGroups{
+		{
+			Group: "Tier1",
+			Required: true,
+			Reviewers: []Reviewer{
+				{
+					VisualStudioId: "asdfalksjdfji33u34ii",
+					Email:          "sakreter@microsoft.com",
+					Alias:          "sakreter",
+				},
+				{
+					VisualStudioId: "asdfalkd345d3u34ii",
+					Email: "dasdfe@microsoft.com",
+					Alias: "dasdfe",
+				},
+				{
+					VisualStudioId: "aasda3333eefgii",
+					Email: "edfgaa@microsoft.com",
+					Alias: "edfgaa",
+				},
 			},
-		},
-		Optional: []Reviewer{
-			{
-				VisualStudioId: "asddas33333ksjdfji33u34ii",
-				Email:          "tesdad@microsoft.com",
-				Alias:          "tesdad",
-			},
+			CurrentPos: 0,
 		},
 	}
 )
 
 func TestGetReviewersAlias(t *testing.T) {
-	combinedReviewers := append(actualReviewers.Required, actualReviewers.Optional...)
-	alias := GetReviewersAlias(combinedReviewers)
+	alias := GetReviewersAlias(expectedReviewerGroups[0].Reviewers)
 
-	assert.Equal(t, []string{"sakreter", "tesdad"}, alias)
+	assert.Equal(t, []string{"sakreter", "dasdfe", "edfgaa"}, alias)
 }
 
-func TestGetNextReviewers(t *testing.T){
+func TestGetReviewers(t *testing.T){
 	review := ReviewSummary{
 		Id: "testiasdfasdf",
 		AuthorVstsID: "asdfalksjdfji33u34ii",
@@ -42,44 +53,34 @@ func TestGetNextReviewers(t *testing.T){
 		ReviewType:   "basic",
 	}
 	
+
+
 	//Base Test
-	req, op := GetNextReviewers(review)
+	req, op := GetReviewers(review)
+	fmt.Fprint(out, req)
+
+	assert.Equal(t, 2, len(req))
+	assert.Equal(t, 3, len(op))
 	assert.Equal(t, "dasdfe" , req[0].Alias)
-	assert.Equal(t, "tesdad", op[0].Alias)
+	assert.Equal(t, "psaraiya", op[0].Alias)
 
 	//Should go to next reviewer
-	req, op = GetNextReviewers(review)
+	req, op = GetReviewers(review)
 	assert.Equal(t, "edfgaa" , req[0].Alias)
-	assert.Equal(t, "yekk34t", op[0].Alias)
+	assert.Equal(t, "psaraiya", op[0].Alias)
 
 	//Should go to begining for required
-	req, op = GetNextReviewers(review)
+	req, op = GetReviewers(review)
 	assert.Equal(t, "dasdfe" , req[0].Alias)
-	assert.Equal(t, "dfedad", op[0].Alias)
+	assert.Equal(t, "psaraiya", op[0].Alias)
 
 }
 
-func TestLoadReviewers(t *testing.T) {
-	expectedReviewers := Reviewers{
-		Required: []Reviewer{
-			{
-				VisualStudioId: "asdfalksjdfji33u34ii",
-				Email:          "sakreter@microsoft.com",
-				Alias:          "sakreter",
-			},
-		},
-		Optional: []Reviewer{
-			{
-				VisualStudioId: "asddas33333ksjdfji33u34ii",
-				Email:          "tesdad@microsoft.com",
-				Alias:          "tesdad",
-			},
-		},
-	}
-	actualReviewers := loadReviewers()
+func TestloadReviewerGroups(t *testing.T) {
 
-	assert.Equal(t, 3, len(actualReviewers.Required), "Must have the correct length of required reviewers")
-	assert.Equal(t, 3, len(actualReviewers.Required), "Must have the correct length of optional reviewersd")
-	assert.Equal(t, expectedReviewers.Required[0], actualReviewers.Required[0])
-	assert.Equal(t, expectedReviewers.Optional[0], actualReviewers.Optional[0])
+	actualReviewerGroups := loadReviewerGroups()
+
+	assert.Equal(t, 6, len(actualReviewerGroups), "Must have the correct length of reviewerGroup")
+	assert.Equal(t,  expectedReviewerGroups[0].Reviewers[0], actualReviewerGroups[0].Reviewers[0])
+	assert.Equal(t,  expectedReviewerGroups[0].Required, "true")
 }

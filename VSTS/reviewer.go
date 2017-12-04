@@ -4,33 +4,31 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"fmt"
+	"os"
 )
 
-var (
-	reviewers   *Reviewers
-)
+type ReviewerGroups []ReviewerGroup
 
-type Reviewers struct {
-	Optional    []Reviewer `json:"optional"`
-	Required    []Reviewer `json:"required"`
-	requiredPos int
-	optionalPos int
+type ReviewerGroup struct {
+	Group 		string 		`json:"group"`
+	Required 	bool 		`json:"required"`
+	Reviewers	[]Reviewer 	`json:"reviewers"`
+	CurrentPos	int	
 }
 
-func (r Reviewers) getCurrentRequred() Reviewer {
-	return r.Required[r.requiredPos]
+type Reviewer struct {
+	VisualStudioId string `json:"id"`
+	Email          string `json:"uniqueName"`
+	Alias          string `json:"alias"`
 }
 
-func (r Reviewers) getCurrentOptional() Reviewer {
-	return r.Optional[r.optionalPos]
+func (g ReviewerGroup) getCurrentReviewer() Reviewer {
+	return g.Reviewers[g.CurrentPos]
 }
 
-func (r *Reviewers) incRequred() {
-	r.requiredPos = (r.requiredPos + 1) % len(r.Required)
-}
-
-func (r *Reviewers) incOptional() {
-	r.optionalPos = (r.optionalPos + 1) % len(r.Optional)
+func (g *ReviewerGroup) incPos() {
+	g.CurrentPos = (g.CurrentPos + 1) % len(g.Reviewers)
 }
 
 type ReviewSummary struct {
@@ -42,14 +40,12 @@ type ReviewSummary struct {
 	ReviewType   string
 }
 
-type Reviewer struct {
-	VisualStudioId string `json:"id"`
-	Email          string `json:"uniqueName"`
-	Alias          string `json:"alias"`
-}
+var (
+	reviewerGroups ReviewerGroups
+)
 
 func init() {
-	reviewers = loadReviewers()
+	reviewerGroups = loadReviewerGroups()
 }
 
 func GetReviewersAlias(reviewers []Reviewer) []string {
@@ -61,35 +57,44 @@ func GetReviewersAlias(reviewers []Reviewer) []string {
 	return aliases
 }
 
-func loadReviewers() *Reviewers {
+func loadReviewerGroups() ReviewerGroups {
 	rawData, err := ioutil.ReadFile("./reviewers.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	reviewers := &Reviewers{}
-	json.Unmarshal(rawData, &reviewers)
+	reviewerGroups := ReviewerGroups{}
+	json.Unmarshal(rawData, &reviewerGroups)
 
-	return reviewers
+	return reviewerGroups
 }
 
-func GetNextReviewers(review ReviewSummary) ([]Reviewer, []Reviewer) {
-	defer reviewers.incOptional()
-	defer reviewers.incRequred()
+func GetReviewers(review ReviewSummary) ([]Reviewer, []Reviewer) {
+	requiredReviewers := make([]Reviewer, len(reviewerGroups) / 2)
+	optionalReviewers := make([]Reviewer, len(reviewerGroups) / 2)
 
-	for len(reviewers.Required) > 1 && 
-		(reviewers.getCurrentRequred().Alias == review.AuthorAlias ||
-		reviewers.getCurrentRequred().VisualStudioId == review.AuthorVstsID) {
-		
-		reviewers.incRequred()
+	fmt.Fprint(os.Stdout, "INside this ####################")
+
+	for _, group := range reviewerGroups{
+		if group.Required == true{
+			requiredReviewers = append(requiredReviewers, getNextReviewer(group, review))
+		} else { 
+			optionalReviewers = append(optionalReviewers, getNextReviewer(group, review))
+		}
 	}
 
-	for len(reviewers.Optional) > 1 && 
-		(reviewers.getCurrentOptional().Alias == review.AuthorAlias ||
-		reviewers.getCurrentOptional().VisualStudioId == review.AuthorVstsID) {
+	return requiredReviewers, optionalReviewers
+}
+
+func getNextReviewer(group ReviewerGroup, review ReviewSummary) Reviewer{
+	defer group.incPos()
+
+	for len(group.Reviewers) > 1 && 
+		(group.getCurrentReviewer().Alias == review.AuthorAlias ||
+		group.getCurrentReviewer().VisualStudioId == review.AuthorVstsID) {
 		
-		reviewers.incOptional()
+		group.incPos()
 	}
 
-	return []Reviewer{reviewers.getCurrentRequred()}, []Reviewer{reviewers.getCurrentOptional()}
+	return group.getCurrentReviewer()
 }
