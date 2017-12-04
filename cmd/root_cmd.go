@@ -34,6 +34,6 @@ func balanceReview(review vsts.ReviewSummary) {
 			strings.Join(vsts.GetReviewersAlias(requiredReviewers), ","),
 			vsts.Conf.VstsBotMaker)
 
-		vsts.AddRootComment(reviewSummary, comment)
+		vsts.AddRootComment(review, comment)
 	}
 }

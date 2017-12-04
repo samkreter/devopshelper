@@ -33,8 +33,23 @@ func TestGetReviewersAlias(t *testing.T) {
 	assert.Equal(t, []string{"sakreter", "tesdad"}, alias)
 }
 
+func TestGetNextReviewers(t *testing.T){
+	review := ReviewSummary{
+		Id: "testiasdfasdf",
+		AuthorVstsID: "asdfalksjdfji33u34ii",
+		AuthorEmail:  "sakreter@microsoft.com",
+		AuthorAlias:  "sakreter",
+		RepositoryId: "112341234556623",
+		ReviewType:   "basic",
+	}
+	
+	req, op := GetNextReviewers(review)
+
+
+}
+
 func TestLoadReviewers(t *testing.T) {
-	actualReviewers := Reviewers{
+	expectedReviewers := Reviewers{
 		Required: []Reviewer{
 			{
 				VisualStudioId: "asdfalksjdfji33u34ii",
@@ -50,10 +65,10 @@ func TestLoadReviewers(t *testing.T) {
 			},
 		},
 	}
-	requried, optional := LoadReviewers()
+	actualReviewers := loadReviewers()
 
-	fmt.Println(requried)
-
-	assert.Equal(t, actualReviewers.Required[0], requried[0])
-	assert.Equal(t, actualReviewers.Optional[0], optional[0])
+	assert.Equal(t, 1, len(actualReviewers.Required), "Must have the correct length of required reviewers")
+	assert.Equal(t, 1, len(actualReviewers.Required), "Must have the correct length of optional reviewersd")
+	assert.Equal(t, expectedReviewers.Required[0], actualReviewers.Required[0])
+	assert.Equal(t, expectedReviewers.Optional[0], actualReviewers.Optional[0])
 }

@@ -7,8 +7,6 @@ import (
 )
 
 var (
-	requiredPos = 0
-	optionalPos = 0
 	reviewers   *Reviewers
 )
 
@@ -19,20 +17,20 @@ type Reviewers struct {
 	optionalPos int
 }
 
-func getCurrentRequred() Reviewer {
-	return reviewers.Required[requiredPos]
+func (r Reviewers) getCurrentRequred() Reviewer {
+	return r.Required[r.requiredPos]
 }
 
-func getCurrentOptional() Reviewer {
-	return reviewers.Optional[optionalPos]
+func (r Reviewers) getCurrentOptional() Reviewer {
+	return r.Optional[r.optionalPos]
 }
 
-func incRequred() {
-	reviewers.requiredPos++
+func (r *Reviewers) incRequred() {
+	r.requiredPos = (r.requiredPos + 1) % len(r.Required)
 }
 
-func incOptional() {
-	reviewers.optionalPos++
+func (r *Reviewers) incOptional() {
+	r.optionalPos = (r.optionalPos + 1) % len(r.Optional)
 }
 
 type ReviewSummary struct {
@@ -72,27 +70,26 @@ func loadReviewers() *Reviewers {
 	reviewers := &Reviewers{}
 	json.Unmarshal(rawData, &reviewers)
 
-	reviewers.requiredPos = 0
-	reviewers.optionalPos = 0
-
 	return reviewers
 }
 
-func GetNextReviewers(review ReviewSummary) (Reviewer, Reviewer) {
-	requiredPos++
-	optionalPos++
+func GetNextReviewers(review ReviewSummary) ([]Reviewer, []Reviewer) {
+	defer reviewers.incOptional()
+	defer reviewers.incRequred()
 
-	for reviewers.Required[requiredPos].Alias == review.AuthorAlias ||
-		reviewers.Required[requiredPos].Alias == review.AuthorVstsID {
-
-		requiredPos++
+	for len(reviewers.Required) > 1 && 
+		(reviewers.getCurrentRequred().Alias == review.AuthorAlias ||
+		reviewers.getCurrentRequred().VisualStudioId == review.AuthorVstsID) {
+		
+		reviewers.incRequred()
 	}
 
-	for reviewers.Optional[requiredPos].Alias == review.AuthorAlias ||
-		reviewers.Optional[requiredPos].Alias == review.AuthorVstsID {
-
-		optionalPos++
+	for len(reviewers.Optional) > 1 && 
+		(reviewers.getCurrentOptional().Alias == review.AuthorAlias ||
+		reviewers.getCurrentOptional().VisualStudioId == review.AuthorVstsID) {
+		
+		reviewers.incOptional()
 	}
 
-	return reviewers.Required[requiredPos], reviewers.Optional[optionalPos]
+	return []Reviewer{reviewers.getCurrentRequred()}, []Reviewer{reviewers.getCurrentOptional()}
 }
