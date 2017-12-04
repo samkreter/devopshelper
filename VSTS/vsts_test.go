@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"encoding/json"
-	"fmt"
 )
 
 
@@ -34,18 +33,18 @@ func GetTestServer(t *testing.T, method string, route string, jsonData interface
 	return ts
 }
 
-func TestGetInprogressReviews(t *testing.T) {
-	ts := GetTestServer(t,"GET", "/test", nil, nil)
+// func TestGetInprogressReviews(t *testing.T) {
+// 	ts := GetTestServer(t,"GET", "/test", nil, nil)
 
-	defer ts.Close()
+// 	defer ts.Close()
 	
-	nsqdUrl := ts.URL
-	pullRequests := new(VstsPullRequests)
-	err := GetJsonResponse(nsqdUrl, pullRequests)
-	fmt.Println("got through the test")
+// 	nsqdUrl := ts.URL
+// 	pullRequests := new(VstsPullRequests)
+// 	err := GetJsonResponse(nsqdUrl, pullRequests)
+// 	fmt.Println("got through the test")
 
-	if err != nil {
-		t.Errorf("Publish() returned an error: %s", err)
-	}
-}
+// 	if err != nil {
+// 		t.Errorf("Publish() returned an error: %s", err)
+// 	}
+// }
 

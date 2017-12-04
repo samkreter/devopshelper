@@ -1,7 +1,6 @@
 package vsts
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,8 +42,20 @@ func TestGetNextReviewers(t *testing.T){
 		ReviewType:   "basic",
 	}
 	
+	//Base Test
 	req, op := GetNextReviewers(review)
+	assert.Equal(t, "dasdfe" , req[0].Alias)
+	assert.Equal(t, "tesdad", op[0].Alias)
 
+	//Should go to next reviewer
+	req, op = GetNextReviewers(review)
+	assert.Equal(t, "edfgaa" , req[0].Alias)
+	assert.Equal(t, "yekk34t", op[0].Alias)
+
+	//Should go to begining for required
+	req, op = GetNextReviewers(review)
+	assert.Equal(t, "dasdfe" , req[0].Alias)
+	assert.Equal(t, "dfedad", op[0].Alias)
 
 }
 
@@ -67,8 +78,8 @@ func TestLoadReviewers(t *testing.T) {
 	}
 	actualReviewers := loadReviewers()
 
-	assert.Equal(t, 1, len(actualReviewers.Required), "Must have the correct length of required reviewers")
-	assert.Equal(t, 1, len(actualReviewers.Required), "Must have the correct length of optional reviewersd")
+	assert.Equal(t, 3, len(actualReviewers.Required), "Must have the correct length of required reviewers")
+	assert.Equal(t, 3, len(actualReviewers.Required), "Must have the correct length of optional reviewersd")
 	assert.Equal(t, expectedReviewers.Required[0], actualReviewers.Required[0])
 	assert.Equal(t, expectedReviewers.Optional[0], actualReviewers.Optional[0])
 }
