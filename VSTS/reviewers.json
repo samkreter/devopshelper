@@ -2,7 +2,7 @@
 [
     {
         "group": "Tier1",
-        "Required": "true",
+        "required": true,
         "reviewers":[
             {
                 "id": "asdfalksjdfji33u34ii",
@@ -23,7 +23,7 @@
     },
     {
         "group": "Tier2",
-        "require": "true",
+        "required": true,
         "reviewers": [
             {
                 "id": "asddas33333ksjdfji33u34ii",
@@ -44,7 +44,7 @@
     },
     {
         "group": "Observer",
-        "required": "false",
+        "required": false,
         "reviewers": [
             {
                 "id": "c4aba766-4cc3-4fff-be61-763402dbe9ae", 
