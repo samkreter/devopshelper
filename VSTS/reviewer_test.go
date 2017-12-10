@@ -47,6 +47,7 @@ func TestGetReviewersAlias(t *testing.T) {
 }
 
 func TestGetReviewers(t *testing.T) {
+
 	review := ReviewSummary{
 		ID:           "testiasdfasdf",
 		AuthorVstsID: "asdfalksjdfji33u34ii",
