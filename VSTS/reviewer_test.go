@@ -17,17 +17,17 @@ var (
 			Required: true,
 			Reviewers: []Reviewer{
 				{
-					VisualStudioId: "asdfalksjdfji33u34ii",
+					VisualStudioID: "asdfalksjdfji33u34ii",
 					Email:          "sakreter@microsoft.com",
 					Alias:          "sakreter",
 				},
 				{
-					VisualStudioId: "asdfalkd345d3u34ii",
+					VisualStudioID: "asdfalkd345d3u34ii",
 					Email:          "dasdfe@microsoft.com",
 					Alias:          "dasdfe",
 				},
 				{
-					VisualStudioId: "aasda3333eefgii",
+					VisualStudioID: "aasda3333eefgii",
 					Email:          "edfgaa@microsoft.com",
 					Alias:          "edfgaa",
 				},
@@ -48,11 +48,11 @@ func TestGetReviewersAlias(t *testing.T) {
 
 func TestGetReviewers(t *testing.T) {
 	review := ReviewSummary{
-		Id:           "testiasdfasdf",
+		ID:           "testiasdfasdf",
 		AuthorVstsID: "asdfalksjdfji33u34ii",
 		AuthorEmail:  "sakreter@microsoft.com",
 		AuthorAlias:  "sakreter",
-		RepositoryId: "112341234556623",
+		RepositoryID: "112341234556623",
 		ReviewType:   "basic",
 	}
 

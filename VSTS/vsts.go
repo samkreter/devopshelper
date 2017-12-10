@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
+	"github.com/jinzhu/configor"
 )
 
-type config struct {
+type vstsConfig struct {
 	VstsToken         string `json:"vstsToken"`
 	VstsProject       string `json:"vstsProject"`
 	VstsUsername      string `json:"vstsUsername"`
@@ -22,7 +22,7 @@ type config struct {
 }
 
 var (
-	Conf                    *config
+	Config                  = vstsConfig{}
 	PullRequestsURITemplate = "DefaultCollection/{project}/_apis/git/pullRequests?api-version={apiVersion}&reviewerId={reviewerId}"
 	CommentsURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
 	ReviewerURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
@@ -30,25 +30,8 @@ var (
 	APIVersion              = "3.0"
 )
 
-func getConf() *config {
-	viper.AddConfigPath(".")
-	viper.SetConfigName("config.dev")
-
-	err := viper.ReadInConfig()
-	if err != nil {
-		fmt.Printf("%v", err)
-	}
-
-	conf := &config{}
-	err = viper.Unmarshal(conf)
-	if err != nil {
-		fmt.Printf("unable to decode into config struct, %v", err)
-	}
-	return conf
-}
-
 func init() {
-	Conf = getConf()
+	configor.Load(&Config, "./configs/config.dev.json")
 }
 
 func GetCommentsUri(pullRequestID string, repositoryID string) string {
@@ -67,8 +50,8 @@ func GetReviewerUri(repositoryID string, pullRequestID string, reviewerID string
 }
 
 func GetPullRequestsUri() string {
-	r := strings.NewReplacer("{project}", Conf.VstsProject,
-		"{reviewerId}", Conf.VstsArmReviewerID,
+	r := strings.NewReplacer("{project}", Config.VstsProject,
+		"{reviewerId}", Config.VstsArmReviewerID,
 		"{apiVersion}", APIVersion)
 	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(PullRequestsURITemplate))
 }
@@ -78,7 +61,7 @@ func PostJson(url string, jsonData interface{}) error {
 	json.NewEncoder(b).Encode(jsonData)
 
 	req, err := http.NewRequest("POST", url, b)
-	req.SetBasicAuth(Conf.VstsUsername, Conf.VstsToken)
+	req.SetBasicAuth(Config.VstsUsername, Config.VstsToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -98,7 +81,7 @@ func PostJson(url string, jsonData interface{}) error {
 func GetJsonResponse(url string, target interface{}) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.SetBasicAuth(Conf.VstsUsername, Conf.VstsToken)
+	req.SetBasicAuth(Config.VstsUsername, Config.VstsToken)
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -122,7 +105,7 @@ func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
 	if threads != nil {
 		for _, thread := range threads.CommentThreads {
 			for _, comment := range thread.Comments {
-				if strings.Contains(comment.Content, Conf.VstsBotMaker) {
+				if strings.Contains(comment.Content, Config.VstsBotMaker) {
 					return true
 				}
 			}

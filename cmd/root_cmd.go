@@ -21,7 +21,7 @@ func balanceReview(review vsts.ReviewSummary) {
 	if !vsts.ContainsReviewBalancerComment(review) {
 
 		requiredReviewers, optionalReviewers := vsts.GetReviewers(review)
-		
+
 		vsts.AddReviewers(review, requiredReviewers, optionalReviewers)
 
 		comment := fmt.Sprintf(
@@ -32,7 +32,7 @@ func balanceReview(review vsts.ReviewSummary) {
 				"CR Balancer\r\n"+
 				"%s",
 			strings.Join(vsts.GetReviewersAlias(requiredReviewers), ","),
-			vsts.Conf.VstsBotMaker)
+			vsts.Config.VstsBotMaker)
 
 		vsts.AddRootComment(review, comment)
 	}

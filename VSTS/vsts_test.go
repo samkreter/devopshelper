@@ -1,29 +1,29 @@
 package vsts
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"encoding/json"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-
-func GetTestServer(t *testing.T, method string, route string, jsonData interface{}, target interface{}) *httptest.Server{
+func GetTestServer(t *testing.T, method string, route string, jsonData interface{}, target interface{}) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		
-		w.WriteHeader(http.StatusOK)
-		
-		assert.Equal(t, method, req.Method)
-		assert.Equal(t,route, req.URL.EscapedPath())
 
-		if method == "POST"{
+		w.WriteHeader(http.StatusOK)
+
+		assert.Equal(t, method, req.Method)
+		assert.Equal(t, route, req.URL.EscapedPath())
+
+		if method == "POST" {
 			err := json.NewDecoder(req.Body).Decode(target)
 			if err != nil {
 				t.Errorf("Error while reading request JSON: %s", err)
 			}
 
-			if jsonData != target{
+			if jsonData != target {
 				t.Errorf("The Post data does not match")
 			}
 		}
@@ -37,7 +37,7 @@ func GetTestServer(t *testing.T, method string, route string, jsonData interface
 // 	ts := GetTestServer(t,"GET", "/test", nil, nil)
 
 // 	defer ts.Close()
-	
+
 // 	nsqdUrl := ts.URL
 // 	pullRequests := new(VstsPullRequests)
 // 	err := GetJsonResponse(nsqdUrl, pullRequests)
@@ -47,4 +47,3 @@ func GetTestServer(t *testing.T, method string, route string, jsonData interface
 // 		t.Errorf("Publish() returned an error: %s", err)
 // 	}
 // }
-
