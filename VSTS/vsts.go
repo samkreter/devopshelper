@@ -16,19 +16,18 @@ type config struct {
 	VstsToken         string `json:"vstsToken"`
 	VstsProject       string `json:"vstsProject"`
 	VstsUsername      string `json:"vstsUsername"`
-	VstsRepositoryId  string `json:"repositoryId"`
-	VstsArmReviewerId string `json:"vstsArmReviewerId"`
+	VstsRepositoryID  string `json:"repositoryId"`
+	VstsArmReviewerID string `json:"vstsArmReviewerId"`
 	VstsBotMaker      string `json:"vstsBotMaker"`
 }
 
-
 var (
 	Conf                    *config
-	PullRequestsUriTemplate string = "DefaultCollection/{project}/_apis/git/pullRequests?api-version={apiVersion}&reviewerId={reviewerId}"
-	CommentsUriTemplate     string = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
-	ReviewerUriTemplate     string = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
-	VstsBaseUri             string = "https://msazure.visualstudio.com/"
-	ApiVersion              string = "3.0"
+	PullRequestsURITemplate = "DefaultCollection/{project}/_apis/git/pullRequests?api-version={apiVersion}&reviewerId={reviewerId}"
+	CommentsURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
+	ReviewerURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
+	VstsBaseURI             = "https://msazure.visualstudio.com/"
+	APIVersion              = "3.0"
 )
 
 func getConf() *config {
@@ -52,26 +51,26 @@ func init() {
 	Conf = getConf()
 }
 
-func GetCommentsUri(pullRequestId string, repositoryId string) string {
-	r := strings.NewReplacer("{repositoryId}", repositoryId,
-		"{pullRequestId", pullRequestId,
-		"{apiVersion}", ApiVersion)
-	return fmt.Sprintf("%s%s", VstsBaseUri, r.Replace(ReviewerUriTemplate))
+func GetCommentsUri(pullRequestID string, repositoryID string) string {
+	r := strings.NewReplacer("{repositoryId}", repositoryID,
+		"{pullRequestId", pullRequestID,
+		"{apiVersion}", APIVersion)
+	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(ReviewerURITemplate))
 }
 
-func GetReviewerUri(repositoryId string, pullRequestId string, reviewerId string) string {
-	r := strings.NewReplacer("{repositoryId}", repositoryId,
-		"{pullRequestId", pullRequestId,
-		"{reviewerId}", reviewerId,
-		"{apiVersion}", ApiVersion)
-	return fmt.Sprintf("%s%s", VstsBaseUri, r.Replace(ReviewerUriTemplate))
+func GetReviewerUri(repositoryID string, pullRequestID string, reviewerID string) string {
+	r := strings.NewReplacer("{repositoryId}", repositoryID,
+		"{pullRequestId", pullRequestID,
+		"{reviewerId}", reviewerID,
+		"{apiVersion}", APIVersion)
+	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(ReviewerURITemplate))
 }
 
 func GetPullRequestsUri() string {
 	r := strings.NewReplacer("{project}", Conf.VstsProject,
-		"{reviewerId}", Conf.VstsArmReviewerId,
-		"{apiVersion}", ApiVersion)
-	return fmt.Sprintf("%s%s", VstsBaseUri, r.Replace(PullRequestsUriTemplate))
+		"{reviewerId}", Conf.VstsArmReviewerID,
+		"{apiVersion}", APIVersion)
+	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(PullRequestsURITemplate))
 }
 
 func PostJson(url string, jsonData interface{}) error {
@@ -112,7 +111,7 @@ func GetJsonResponse(url string, target interface{}) error {
 }
 
 func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
-	url := GetCommentsUri(reviewSummary.RepositoryId, reviewSummary.Id)
+	url := GetCommentsUri(reviewSummary.RepositoryID, reviewSummary.ID)
 
 	threads := new(VstsCommentThreads)
 	err := GetJsonResponse(url, threads)
@@ -151,7 +150,7 @@ func GetInprogressReviews() []ReviewSummary {
 func AddRootComment(reviewSummary ReviewSummary, comment string) {
 	thread := NewVstsCommentThread(comment)
 
-	url := GetCommentsUri(reviewSummary.RepositoryId, reviewSummary.Id)
+	url := GetCommentsUri(reviewSummary.RepositoryID, reviewSummary.ID)
 	err := PostJson(url, thread)
 	if err != nil {
 		log.Fatal(err)
@@ -160,7 +159,7 @@ func AddRootComment(reviewSummary ReviewSummary, comment string) {
 
 func AddReviewers(reviewSummary ReviewSummary, required []Reviewer, optional []Reviewer) {
 	for _, reviewer := range append(required, optional...) {
-		url := GetReviewerUri(reviewSummary.RepositoryId, reviewSummary.Id, reviewer.VisualStudioId)
+		url := GetReviewerUri(reviewSummary.RepositoryID, reviewSummary.ID, reviewer.VisualStudioID)
 		vote := NewDefaultVisualStudioReviewerVote()
 
 		err := PostJson(url, vote)

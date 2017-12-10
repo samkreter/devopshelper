@@ -16,9 +16,9 @@ type VstsRepository struct {
 
 func NewReviewSummary(pullRequest VstsPullRequest) ReviewSummary {
 	return ReviewSummary{
-		Id:           pullRequest.ID,
+		ID:           pullRequest.ID,
 		AuthorEmail:  pullRequest.Author.Email,
-		AuthorVstsID: pullRequest.Author.VisualStudioId,
-		RepositoryId: pullRequest.Repository.ID,
+		AuthorVstsID: pullRequest.Author.VisualStudioID,
+		RepositoryID: pullRequest.Repository.ID,
 		ReviewType:   "VstsPullRequest"}
 }

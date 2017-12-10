@@ -16,7 +16,7 @@ type ReviewerGroup struct {
 }
 
 type Reviewer struct {
-	VisualStudioId string `json:"id"`
+	VisualStudioID string `json:"id"`
 	Email          string `json:"uniqueName"`
 	Alias          string `json:"alias"`
 }
@@ -30,11 +30,11 @@ func (g *ReviewerGroup) incPos() {
 }
 
 type ReviewSummary struct {
-	Id           string
+	ID           string
 	AuthorAlias  string
 	AuthorEmail  string
 	AuthorVstsID string
-	RepositoryId string
+	RepositoryID string
 	ReviewType   string
 }
 
@@ -46,6 +46,8 @@ func init() {
 	reviewerGroups = loadReviewerGroups()
 }
 
+// GetReviewersAlias gets all aliases for the set of passed in reviewers
+// return: string slice of the aliases
 func GetReviewersAlias(reviewers []Reviewer) []string {
 	aliases := make([]string, len(reviewers))
 
@@ -67,6 +69,9 @@ func loadReviewerGroups() ReviewerGroups {
 	return reviewerGroups
 }
 
+// GetReviewers gets the required and optional reviewers for a review
+// review: the review summary
+// return: returns a slice of require reviewers and a slice of optional reviewers
 func GetReviewers(review ReviewSummary) ([]Reviewer, []Reviewer) {
 	requiredReviewers := make([]Reviewer, 0, len(reviewerGroups)/2)
 	optionalReviewers := make([]Reviewer, 0, len(reviewerGroups)/2)
@@ -87,7 +92,7 @@ func getNextReviewer(group *ReviewerGroup, review ReviewSummary) Reviewer {
 
 	for len(group.Reviewers) > 1 &&
 		(group.getCurrentReviewer().Alias == review.AuthorAlias ||
-			group.getCurrentReviewer().VisualStudioId == review.AuthorVstsID) {
+			group.getCurrentReviewer().VisualStudioID == review.AuthorVstsID) {
 
 		group.incPos()
 	}
