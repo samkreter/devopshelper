@@ -151,7 +151,7 @@ func getJSONResponse(url string, target interface{}) error {
 func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
 	url := GetCommentsURI(reviewSummary.RepositoryID, reviewSummary.ID)
 
-	threads := new(VstsCommentThreads)
+	threads := new(CommentThreads)
 	err := getJSONResponse(url, threads)
 
 	if err != nil {
@@ -174,7 +174,7 @@ func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
 func GetInprogressReviews() []ReviewSummary {
 	url := GetPullRequestsURI()
 
-	pullRequests := new(VstsPullRequests)
+	pullRequests := new(PullRequests)
 	err := getJSONResponse(url, pullRequests)
 	if err != nil {
 		log.Fatal(err)
@@ -189,7 +189,7 @@ func GetInprogressReviews() []ReviewSummary {
 
 // AddRootComment adds a comment to the review passed in.
 func AddRootComment(reviewSummary ReviewSummary, comment string) {
-	thread := NewVstsCommentThread(comment)
+	thread := NewCommentThread(comment)
 
 	url := GetCommentsURI(reviewSummary.RepositoryID, reviewSummary.ID)
 	err := sendJSON("POST", url, thread)
@@ -203,7 +203,7 @@ func AddReviewers(reviewSummary ReviewSummary, required []Reviewer, optional []R
 	for _, reviewer := range append(required, optional...) {
 		url := GetReviewerURI(reviewSummary.RepositoryID, reviewSummary.ID, reviewer.VisualStudioID)
 
-		vote := NewDefaultVisualStudioReviewerVote()
+		vote := NewDefaultReviewerVote()
 
 		err := sendJSON("PUT", url, vote)
 		if err != nil {

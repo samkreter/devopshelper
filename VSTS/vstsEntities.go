@@ -4,22 +4,25 @@ import (
 	"encoding/json"
 )
 
-//Pull Requests
-type VstsPullRequests struct {
-	PullRequests []VstsPullRequest `json:"value"`
+//PullRequests is a list of pull requests.
+type PullRequests struct {
+	PullRequests []PullRequest `json:"value"`
 }
 
-type VstsPullRequest struct {
-	ID         json.Number    `json:"pullRequestId"`
-	Author     Reviewer       `json:"createdBy"`
-	Repository VstsRepository `json:"repository"`
+//PullRequest is a pull request retrieved from the vsts API.
+type PullRequest struct {
+	ID         json.Number `json:"pullRequestId"`
+	Author     Reviewer    `json:"createdBy"`
+	Repository Repository  `json:"repository"`
 }
 
-type VstsRepository struct {
+// Repository is an identifier for a vsts repository.
+type Repository struct {
 	ID string `json:"id"`
 }
 
-func NewReviewSummary(pullRequest VstsPullRequest) ReviewSummary {
+// NewReviewSummary creates an interal review summary from a vsts pull request
+func NewReviewSummary(pullRequest PullRequest) ReviewSummary {
 	return ReviewSummary{
 		ID:           string(pullRequest.ID),
 		AuthorAlias:  pullRequest.Author.Alias,
@@ -29,22 +32,25 @@ func NewReviewSummary(pullRequest VstsPullRequest) ReviewSummary {
 		ReviewType:   "VstsPullRequest"}
 }
 
-//Comment Thread
-type VstsCommentThreads struct {
-	CommentThreads []VstsCommentThread `json:"value"`
+//CommentThreads holds a list of commentThreads
+type CommentThreads struct {
+	CommentThreads []CommentThread `json:"value"`
 }
 
-type VstsCommentThread struct {
-	Comments []VstsComment `json:"comments"`
+//CommentThread holds all comments for a vsts pull request
+type CommentThread struct {
+	Comments []Comment `json:"comments"`
 }
 
-type VstsComment struct {
+//Comment is a single comment on a vsts pull request
+type Comment struct {
 	Content string `json:"content"`
 }
 
-func NewVstsCommentThread(comment string) VstsCommentThread {
-	return VstsCommentThread{
-		Comments: []VstsComment{VstsComment{Content: comment}}}
+//NewCommentThread creates a net comment thread from a single comment
+func NewCommentThread(comment string) CommentThread {
+	return CommentThread{
+		Comments: []Comment{Comment{Content: comment}}}
 }
 
 // Reviewer Vote
@@ -56,10 +62,12 @@ const (
 	Approved                = 10
 )
 
-type VstsReviewerVote struct {
+// ReviewerVote holds the vote item for the vsts API
+type ReviewerVote struct {
 	Vote int `json:"vote"`
 }
 
-func NewDefaultVisualStudioReviewerVote() VstsReviewerVote {
-	return VstsReviewerVote{Vote: NoResponse}
+// NewDefaultReviewerVote creates a new reviewer value with no response set.
+func NewDefaultReviewerVote() ReviewerVote {
+	return ReviewerVote{Vote: NoResponse}
 }

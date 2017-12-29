@@ -62,7 +62,7 @@ func GetReviewersAlias(reviewers []Reviewer) []string {
 }
 
 func loadReviewerGroups() ReviewerGroups {
-	rawData, err := ioutil.ReadFile("./config/reviewers.json")
+	rawData, err := ioutil.ReadFile("./configs/reviewers.json")
 	if err != nil {
 		log.Fatal(err)
 	}
