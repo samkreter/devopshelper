@@ -22,11 +22,12 @@ type vstsConfig struct {
 }
 
 var (
+	//Config holds the vsts configuration.
 	Config                  = vstsConfig{}
-	PullRequestsURITemplate = "DefaultCollection/{project}/_apis/git/repositories/{repositoryName}/pullRequests?api-version={apiVersion}"
-	CommentsURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
-	ReviewerURITemplate     = "DefaultCollection/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
-	VstsBaseURI             = "https://msazure.visualstudio.com/"
+	pullRequestsURITemplate = "DefaultCollection/{project}/_apis/git/repositories/{repositoryName}/pullRequests?api-version={apiVersion}"
+	commentsURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
+	reviewerURITemplate     = "DefaultCollection/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
+	vstsBaseURI             = "https://msazure.visualstudio.com/"
 )
 
 func readConfig(filename string, envPrefix string, defaults map[string]interface{}) (*viper.Viper, error) {
@@ -79,34 +80,37 @@ func init() {
 	}
 }
 
-func GetCommentsUri(repositoryID string, pullRequestID string) string {
+// GetCommentsURI constructs the URI for the comments API interactions.
+func GetCommentsURI(repositoryID string, pullRequestID string) string {
 	r := strings.NewReplacer(
 		"{repositoryId}", repositoryID,
 		"{pullRequestId}", pullRequestID,
 		"{apiVersion}", Config.APIVersion)
-	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(CommentsURITemplate))
+	return fmt.Sprintf("%s%s", vstsBaseURI, r.Replace(commentsURITemplate))
 }
 
-func GetReviewerUri(repositoryID string, pullRequestID string, reviewerID string) string {
+// GetReviewerURI constructs the URI for the reviewer API interations.
+func GetReviewerURI(repositoryID string, pullRequestID string, reviewerID string) string {
 	r := strings.NewReplacer(
 		"{project}", Config.Project,
 		"{repositoryId}", repositoryID,
 		"{pullRequestId}", pullRequestID,
 		"{reviewerId}", reviewerID,
 		"{apiVersion}", Config.APIVersion)
-	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(ReviewerURITemplate))
+	return fmt.Sprintf("%s%s", vstsBaseURI, r.Replace(reviewerURITemplate))
 }
 
-func GetPullRequestsUri() string {
+// GetPullRequestsURI constructs the URI for the pull requests API interactions.
+func GetPullRequestsURI() string {
 	r := strings.NewReplacer(
 		"{project}", Config.Project,
 		"{repositoryName}", Config.RepositoryName,
 		"{apiVersion}", Config.APIVersion)
 
-	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(PullRequestsURITemplate))
+	return fmt.Sprintf("%s%s", vstsBaseURI, r.Replace(pullRequestsURITemplate))
 }
 
-func SendJson(method string, url string, jsonData interface{}) error {
+func sendJSON(method string, url string, jsonData interface{}) error {
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(jsonData)
 
@@ -128,7 +132,7 @@ func SendJson(method string, url string, jsonData interface{}) error {
 	return nil
 }
 
-func GetJsonResponse(url string, target interface{}) error {
+func getJSONResponse(url string, target interface{}) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, _ := http.NewRequest("GET", url, nil)
 	req.SetBasicAuth(Config.Username, Config.Token)
@@ -143,11 +147,12 @@ func GetJsonResponse(url string, target interface{}) error {
 	return json.NewDecoder(res.Body).Decode(target)
 }
 
+// ContainsReviewBalancerComment checks if the passed in review has had a bot comment added.
 func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
-	url := GetCommentsUri(reviewSummary.RepositoryID, reviewSummary.ID)
+	url := GetCommentsURI(reviewSummary.RepositoryID, reviewSummary.ID)
 
 	threads := new(VstsCommentThreads)
-	err := GetJsonResponse(url, threads)
+	err := getJSONResponse(url, threads)
 
 	if err != nil {
 		log.Fatal(err)
@@ -165,11 +170,12 @@ func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
 	return false
 }
 
+// GetInprogressReviews gets all currently opened pull requests for a specific repository.
 func GetInprogressReviews() []ReviewSummary {
-	url := GetPullRequestsUri()
+	url := GetPullRequestsURI()
 
 	pullRequests := new(VstsPullRequests)
-	err := GetJsonResponse(url, pullRequests)
+	err := getJSONResponse(url, pullRequests)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -181,23 +187,25 @@ func GetInprogressReviews() []ReviewSummary {
 	return reviewSummaries
 }
 
+// AddRootComment adds a comment to the review passed in.
 func AddRootComment(reviewSummary ReviewSummary, comment string) {
 	thread := NewVstsCommentThread(comment)
 
-	url := GetCommentsUri(reviewSummary.RepositoryID, reviewSummary.ID)
-	err := SendJson("POST", url, thread)
+	url := GetCommentsURI(reviewSummary.RepositoryID, reviewSummary.ID)
+	err := sendJSON("POST", url, thread)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
+// AddReviewers adds the passing in reviewers to the pull requests for the passed in review.
 func AddReviewers(reviewSummary ReviewSummary, required []Reviewer, optional []Reviewer) {
 	for _, reviewer := range append(required, optional...) {
-		url := GetReviewerUri(reviewSummary.RepositoryID, reviewSummary.ID, reviewer.VisualStudioID)
+		url := GetReviewerURI(reviewSummary.RepositoryID, reviewSummary.ID, reviewer.VisualStudioID)
 
 		vote := NewDefaultVisualStudioReviewerVote()
 
-		err := SendJson("PUT", url, vote)
+		err := sendJSON("PUT", url, vote)
 		if err != nil {
 			log.Fatal(err)
 		}

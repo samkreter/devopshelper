@@ -1,10 +1,10 @@
-FROM golang
+FROM golang:1.9.2 as builder
 WORKDIR /go/src/github.com/samkreter/VSTSAutoReviewer/ 
 COPY . /go/src/github.com/samkreter/VSTSAutoReviewer/
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o run .
 
 FROM alpine:latest  
 RUN apk --no-cache add ca-certificates
 WORKDIR /root/
-COPY --from=0 /go/src/github.com/samkreter/VSTSAutoReviewer/app .
-CMD ["./app"]
+COPY --from=builder /go/src/github.com/samkreter/VSTSAutoReviewer/run .
+CMD ["./run"]

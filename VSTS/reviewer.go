@@ -6,8 +6,10 @@ import (
 	"log"
 )
 
+// ReviewerGroups is a list of type ReviewerGroup
 type ReviewerGroups []ReviewerGroup
 
+// ReviewerGroup holds the reviwers and metadata for a review group.
 type ReviewerGroup struct {
 	Group      string     `json:"group"`
 	Required   bool       `json:"required"`
@@ -15,6 +17,7 @@ type ReviewerGroup struct {
 	CurrentPos int
 }
 
+// Reviewer is a vsts revier object
 type Reviewer struct {
 	VisualStudioID string `json:"id"`
 	Email          string `json:"uniqueName"`
@@ -29,6 +32,7 @@ func (g *ReviewerGroup) incPos() {
 	g.CurrentPos = (g.CurrentPos + 1) % len(g.Reviewers)
 }
 
+// ReviewSummary holds information for a review.
 type ReviewSummary struct {
 	ID           string
 	AuthorAlias  string
@@ -58,7 +62,7 @@ func GetReviewersAlias(reviewers []Reviewer) []string {
 }
 
 func loadReviewerGroups() ReviewerGroups {
-	rawData, err := ioutil.ReadFile("./reviewers.json")
+	rawData, err := ioutil.ReadFile("./config/reviewers.json")
 	if err != nil {
 		log.Fatal(err)
 	}
