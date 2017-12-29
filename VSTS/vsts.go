@@ -42,6 +42,24 @@ func readConfig(filename string, envPrefix string, defaults map[string]interface
 	return v, err
 }
 
+func checkConfig(config vstsConfig) error {
+	configError := "Must provide configuration for %s."
+
+	if config.Project == "" {
+		return fmt.Errorf(configError, "the VSTS project")
+	}
+
+	if config.RepositoryName == "" {
+		return fmt.Errorf(configError, "the VSTS repository name")
+	}
+
+	if config.Token == "" {
+		return fmt.Errorf(configError, "the VSTS personal token")
+	}
+
+	return nil
+}
+
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -53,6 +71,10 @@ func init() {
 	}
 
 	if err := v.Unmarshal(&Config); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := checkConfig(Config); err != nil {
 		log.Fatal(err)
 	}
 }
