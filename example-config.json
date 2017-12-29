@@ -1,4 +1,8 @@
 {
     "vstsToken": "",
-    "vstsProject": ""
+    "vstsUsername": "",
+    "vstsProject": "",
+    "vstsApiVersion": "3.0",
+    "vstsBotMaker": "",
+    "repositoryName": ""
 }

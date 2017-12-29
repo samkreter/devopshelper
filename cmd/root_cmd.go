@@ -35,7 +35,7 @@ func balanceReview(review vsts.ReviewSummary) {
 				"CR Balancer\r\n"+
 				"%s",
 			strings.Join(vsts.GetReviewersAlias(requiredReviewers), ","),
-			vsts.Config.VstsBotMaker)
+			vsts.Config.BotMaker)
 
 		vsts.AddRootComment(review, comment)
 	}

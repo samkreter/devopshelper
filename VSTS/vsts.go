@@ -13,13 +13,13 @@ import (
 )
 
 type vstsConfig struct {
-	VstsToken          string `json:"vstsToken"`
-	VstsProject        string `json:"vstsProject"`
-	VstsUsername       string `json:"vstsUsername"`
-	VstsRepositoryName string `json:"repositoryName"`
-	VstsArmReviewerID  string `json:"vstsArmReviewerId"`
-	VstsAPIVersion     string `json:"vstsApiVersion"`
-	VstsBotMaker       string `json:"vstsBotMaker"`
+	Token          string `json:"vstsToken"`
+	Project        string `json:"vstsProject"`
+	Username       string `json:"vstsUsername"`
+	RepositoryName string `json:"repositoryName"`
+	ArmReviewerID  string `json:"vstsArmReviewerId"`
+	APIVersion     string `json:"vstsApiVersion"`
+	BotMaker       string `json:"vstsBotMaker"`
 }
 
 var (
@@ -46,7 +46,7 @@ func GetCommentsUri(repositoryID string, pullRequestID string) string {
 
 func GetReviewerUri(repositoryID string, pullRequestID string, reviewerID string) string {
 	r := strings.NewReplacer(
-		"{project}", Config.VstsProject,
+		"{project}", Config.Project,
 		"{repositoryId}", repositoryID,
 		"{pullRequestId}", pullRequestID,
 		"{reviewerId}", reviewerID,
@@ -56,8 +56,8 @@ func GetReviewerUri(repositoryID string, pullRequestID string, reviewerID string
 
 func GetPullRequestsUri() string {
 	r := strings.NewReplacer(
-		"{project}", Config.VstsProject,
-		"{repositoryName}", Config.VstsRepositoryName,
+		"{project}", Config.Project,
+		"{repositoryName}", Config.RepositoryName,
 		"{apiVersion}", APIVersion)
 
 	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(PullRequestsURITemplate))
@@ -68,7 +68,7 @@ func SendJson(method string, url string, jsonData interface{}) error {
 	json.NewEncoder(b).Encode(jsonData)
 
 	req, err := http.NewRequest(method, url, b)
-	req.SetBasicAuth(Config.VstsUsername, Config.VstsToken)
+	req.SetBasicAuth(Config.Username, Config.Token)
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -88,7 +88,7 @@ func SendJson(method string, url string, jsonData interface{}) error {
 func GetJsonResponse(url string, target interface{}) error {
 	client := &http.Client{Timeout: 10 * time.Second}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.SetBasicAuth(Config.VstsUsername, Config.VstsToken)
+	req.SetBasicAuth(Config.Username, Config.Token)
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -113,7 +113,7 @@ func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
 	if threads != nil {
 		for _, thread := range threads.CommentThreads {
 			for _, comment := range thread.Comments {
-				if strings.Contains(comment.Content, Config.VstsBotMaker) {
+				if strings.Contains(comment.Content, Config.BotMaker) {
 					return true
 				}
 			}
