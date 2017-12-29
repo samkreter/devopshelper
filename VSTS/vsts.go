@@ -13,17 +13,18 @@ import (
 )
 
 type vstsConfig struct {
-	VstsToken         string `json:"vstsToken"`
-	VstsProject       string `json:"vstsProject"`
-	VstsUsername      string `json:"vstsUsername"`
-	VstsRepositoryID  string `json:"repositoryId"`
-	VstsArmReviewerID string `json:"vstsArmReviewerId"`
-	VstsBotMaker      string `json:"vstsBotMaker"`
+	VstsToken          string `json:"vstsToken"`
+	VstsProject        string `json:"vstsProject"`
+	VstsUsername       string `json:"vstsUsername"`
+	VstsRepositoryName string `json:"repositoryName"`
+	VstsArmReviewerID  string `json:"vstsArmReviewerId"`
+	VstsAPIVersion     string `json:"vstsApiVersion"`
+	VstsBotMaker       string `json:"vstsBotMaker"`
 }
 
 var (
 	Config                  = vstsConfig{}
-	PullRequestsURITemplate = "DefaultCollection/{project}/_apis/git/pullRequests?api-version={apiVersion}&reviewerId={reviewerId}"
+	PullRequestsURITemplate = "DefaultCollection/{project}/_apis/git/repositories/{repositoryName}/pullRequests?api-version={apiVersion}"
 	CommentsURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
 	ReviewerURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
 	VstsBaseURI             = "https://msazure.visualstudio.com/"
@@ -31,14 +32,15 @@ var (
 )
 
 func init() {
-	configor.Load(&Config, "./configs/config.dev.json")
+	configor.Load(&Config, "configs/config.dev.json")
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
-func GetCommentsUri(pullRequestID string, repositoryID string) string {
+func GetCommentsUri(repositoryID string, pullRequestID string) string {
 	r := strings.NewReplacer("{repositoryId}", repositoryID,
-		"{pullRequestId", pullRequestID,
+		"{pullRequestId}", pullRequestID,
 		"{apiVersion}", APIVersion)
-	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(ReviewerURITemplate))
+	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(CommentsURITemplate))
 }
 
 func GetReviewerUri(repositoryID string, pullRequestID string, reviewerID string) string {
@@ -51,8 +53,9 @@ func GetReviewerUri(repositoryID string, pullRequestID string, reviewerID string
 
 func GetPullRequestsUri() string {
 	r := strings.NewReplacer("{project}", Config.VstsProject,
-		"{reviewerId}", Config.VstsArmReviewerID,
+		"{repositoryName}", Config.VstsRepositoryName,
 		"{apiVersion}", APIVersion)
+
 	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(PullRequestsURITemplate))
 }
 

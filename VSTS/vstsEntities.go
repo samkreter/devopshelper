@@ -1,12 +1,16 @@
 package vsts
 
+import (
+	"encoding/json"
+)
+
 //Pull Requests
 type VstsPullRequests struct {
 	PullRequests []VstsPullRequest `json:"value"`
 }
 
 type VstsPullRequest struct {
-	ID         string         `json:"pullRequestId"`
+	ID         json.Number    `json:"pullRequestId"`
 	Author     Reviewer       `json:"createdBy"`
 	Repository VstsRepository `json:"repository"`
 }
@@ -17,7 +21,8 @@ type VstsRepository struct {
 
 func NewReviewSummary(pullRequest VstsPullRequest) ReviewSummary {
 	return ReviewSummary{
-		ID:           pullRequest.ID,
+		ID:           string(pullRequest.ID),
+		AuthorAlias:  pullRequest.Author.Alias,
 		AuthorEmail:  pullRequest.Author.Email,
 		AuthorVstsID: pullRequest.Author.VisualStudioID,
 		RepositoryID: pullRequest.Repository.ID,
