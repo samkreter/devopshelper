@@ -45,7 +45,7 @@ func readConfig(filename string, envPrefix string, defaults map[string]interface
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	v, err := readConfig("vstsConfig.dev", "vsts", map[string]interface{}{
+	v, err := readConfig("vsts.config.dev", "vsts", map[string]interface{}{
 		"APIVersion": "3.0",
 	})
 	if err != nil {
@@ -174,8 +174,6 @@ func AddReviewers(reviewSummary ReviewSummary, required []Reviewer, optional []R
 		url := GetReviewerUri(reviewSummary.RepositoryID, reviewSummary.ID, reviewer.VisualStudioID)
 
 		vote := NewDefaultVisualStudioReviewerVote()
-
-		fmt.Println("url", url)
 
 		err := SendJson("PUT", url, vote)
 		if err != nil {

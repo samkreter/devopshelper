@@ -37,7 +37,7 @@ var (
 	}
 )
 
-func l(output string) {
+func testPrint(output string) {
 	fmt.Fprintf(out, output)
 }
 func TestGetReviewersAlias(t *testing.T) {
@@ -82,11 +82,8 @@ func TestGetReviewers(t *testing.T) {
 func TestLoadReviewerGroups(t *testing.T) {
 	actualReviewerGroups := loadReviewerGroups()
 
-	fmt.Fprint(os.Stdout, "testing")
-	fmt.Fprint(out, actualReviewerGroups[0])
-
-	assert.Equal(t, 6, len(actualReviewerGroups), "Must have the correct length of reviewerGroup")
+	assert.Equal(t, 3, len(actualReviewerGroups), "Must have the correct length of reviewerGroup")
 
 	assert.Equal(t, expectedReviewerGroups[0].Reviewers[0], actualReviewerGroups[0].Reviewers[0])
-	assert.Equal(t, expectedReviewerGroups[0].Required, "true")
+	assert.Equal(t, expectedReviewerGroups[0].Required, actualReviewerGroups[0].Required)
 }
