@@ -22,6 +22,9 @@ func balanceReview(review vsts.ReviewSummary) {
 
 		requiredReviewers, optionalReviewers := vsts.GetReviewers(review)
 
+		fmt.Println("required", requiredReviewers)
+		fmt.Println("optional", optionalReviewers)
+
 		vsts.AddReviewers(review, requiredReviewers, optionalReviewers)
 
 		comment := fmt.Sprintf(

@@ -5,25 +5,15 @@
         "required": true,
         "reviewers":[
             {
-                "id": "asdfalksjdfji33u34ii",
+                "id": "3a883e38-d0ad-62e5-aff2-e30dca0db57e",
                 "uniqueName": "sakreter@microsoft.com",
                 "alias": "sakreter"
-            },
-            {
-                "id": "asdfalkd345d3u34ii",
-                "uniqueName": "dasdfe@microsoft.com",
-                "alias": "dasdfe"
-            },
-            {
-                "id": "aasda3333eefgii",
-                "uniqueName": "edfgaa@microsoft.com",
-                "alias": "edfgaa"
             }
         ]
     },
     {
         "group": "Tier2",
-        "required": true,
+        "required": false,
         "reviewers": [
             {
                 "id": "asddas33333ksjdfji33u34ii",
