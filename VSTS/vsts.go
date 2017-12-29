@@ -9,17 +9,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jinzhu/configor"
+	"github.com/spf13/viper"
 )
 
 type vstsConfig struct {
-	Token          string `json:"vstsToken"`
-	Project        string `json:"vstsProject"`
-	Username       string `json:"vstsUsername"`
+	Token          string `json:"token"`
+	Project        string `json:"project"`
+	Username       string `json:"username"`
 	RepositoryName string `json:"repositoryName"`
-	ArmReviewerID  string `json:"vstsArmReviewerId"`
-	APIVersion     string `json:"vstsApiVersion"`
-	BotMaker       string `json:"vstsBotMaker"`
+	APIVersion     string `json:"apiVersion"`
+	BotMaker       string `json:"botMaker"`
 }
 
 var (
@@ -28,19 +27,41 @@ var (
 	CommentsURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
 	ReviewerURITemplate     = "DefaultCollection/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
 	VstsBaseURI             = "https://msazure.visualstudio.com/"
-	APIVersion              = "3.0"
 )
 
+func readConfig(filename string, envPrefix string, defaults map[string]interface{}) (*viper.Viper, error) {
+	v := viper.New()
+	for key, value := range defaults {
+		v.SetDefault(key, value)
+	}
+	v.SetConfigName(filename)
+	v.AddConfigPath("./configs")
+	v.SetEnvPrefix(envPrefix)
+	v.AutomaticEnv()
+	err := v.ReadInConfig()
+	return v, err
+}
+
 func init() {
-	configor.Load(&Config, "configs/config.dev.json")
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+
+	v, err := readConfig("vstsConfig.dev", "vsts", map[string]interface{}{
+		"APIVersion": "3.0",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := v.Unmarshal(&Config); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func GetCommentsUri(repositoryID string, pullRequestID string) string {
 	r := strings.NewReplacer(
 		"{repositoryId}", repositoryID,
 		"{pullRequestId}", pullRequestID,
-		"{apiVersion}", APIVersion)
+		"{apiVersion}", Config.APIVersion)
 	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(CommentsURITemplate))
 }
 
@@ -50,7 +71,7 @@ func GetReviewerUri(repositoryID string, pullRequestID string, reviewerID string
 		"{repositoryId}", repositoryID,
 		"{pullRequestId}", pullRequestID,
 		"{reviewerId}", reviewerID,
-		"{apiVersion}", APIVersion)
+		"{apiVersion}", Config.APIVersion)
 	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(ReviewerURITemplate))
 }
 
@@ -58,7 +79,7 @@ func GetPullRequestsUri() string {
 	r := strings.NewReplacer(
 		"{project}", Config.Project,
 		"{repositoryName}", Config.RepositoryName,
-		"{apiVersion}", APIVersion)
+		"{apiVersion}", Config.APIVersion)
 
 	return fmt.Sprintf("%s%s", VstsBaseURI, r.Replace(PullRequestsURITemplate))
 }
