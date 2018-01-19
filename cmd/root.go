@@ -2,19 +2,18 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/samkreter/VSTSAutoReviewer/vsts"
 )
 
 func Run() error {
+	reviews := vsts.GetInprogressReviews()
 
-	fmt.Println(vsts.GetInprogressReviews())
-	// reviews := vsts.GetInprogressReviews()
-
-	// for _, review := range reviews {
-	// 	balanceReview(review)
-	// }
+	for _, review := range reviews {
+		balanceReview(review)
+	}
 
 	return nil
 }
@@ -23,9 +22,6 @@ func balanceReview(review vsts.ReviewSummary) {
 	if !vsts.ContainsReviewBalancerComment(review) {
 
 		requiredReviewers, optionalReviewers := vsts.GetReviewers(review)
-
-		fmt.Println("required", requiredReviewers)
-		fmt.Println("optional", optionalReviewers)
 
 		vsts.AddReviewers(review, requiredReviewers, optionalReviewers)
 
@@ -40,5 +36,6 @@ func balanceReview(review vsts.ReviewSummary) {
 			vsts.Config.BotMaker)
 
 		vsts.AddRootComment(review, comment)
+		log.Printf("Adding ", vsts.GetReviewersAlias(requiredReviewers), " as reviewerss to PR:", review.ID)
 	}
 }

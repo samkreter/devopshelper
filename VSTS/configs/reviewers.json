@@ -36,7 +36,7 @@
                 "alias": "chshou"
             },
             {
-                "id": "22a77850-d020-4216-ba73-87afd8494a48",
+                "id": "e89ff286-5c15-43e1-8840-f48da700417e",
                 "uniqueName": "xiazhan@microsoft.com",
                 "alias": "xiazhan"
             },
@@ -49,17 +49,6 @@
                 "id": "9d0d64ab-5da8-6fc9-9ab8-2c907bb73a34",
                 "uniqueName": "rosturm@microsoft.com",
                 "alias": "rosturm"
-            }
-        ]
-    },
-    {
-        "group": "Observer",
-        "required": false,
-        "reviewers": [
-            {
-                "id": "b440e3d4-0a89-4ac6-bdc3-be6a9845ff6b", 
-                "uniqueName": "harryh@microsoft.com",
-                "alias": "harryh"
             }
         ]
     }

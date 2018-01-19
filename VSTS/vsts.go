@@ -154,8 +154,10 @@ func ContainsReviewBalancerComment(reviewSummary ReviewSummary) bool {
 	threads := new(CommentThreads)
 	err := getJSONResponse(url, threads)
 
+	// TODO: Make better error handling for this.
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+		return false
 	}
 
 	if threads != nil {
