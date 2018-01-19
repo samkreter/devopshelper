@@ -8,11 +8,13 @@ import (
 )
 
 func Run() error {
-	reviews := vsts.GetInprogressReviews()
 
-	for _, review := range reviews {
-		balanceReview(review)
-	}
+	fmt.Println(vsts.GetInprogressReviews())
+	// reviews := vsts.GetInprogressReviews()
+
+	// for _, review := range reviews {
+	// 	balanceReview(review)
+	// }
 
 	return nil
 }
