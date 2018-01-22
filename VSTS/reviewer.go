@@ -31,7 +31,7 @@ func (reviewerGroups *ReviewerGroups) loadReviewerGroups() {
 	}
 	
 	var reviewerPoses ReviewerPositions
-	json.Unmarshal(rawPosData, reviewerPoses)
+	json.Unmarshal(rawPosData, &reviewerPoses)
 
 	for _, reviewerGroup := range *reviewerGroups{
 		if pos, ok := reviewerPoses[reviewerGroup.Group]; ok{
@@ -41,7 +41,7 @@ func (reviewerGroups *ReviewerGroups) loadReviewerGroups() {
 }
 
 func (reviewerGroups ReviewerGroups) savePositions(){
-	var reviewerPositions ReviewerPositions
+	reviewerPositions := make(ReviewerPositions)
 	for _,  reviewerGroup := range reviewerGroups {
 		reviewerPositions[reviewerGroup.Group] = reviewerGroup.CurrentPos
 	}
@@ -121,9 +121,8 @@ func GetReviewers(review ReviewSummary) ([]Reviewer, []Reviewer) {
 			optionalReviewers = append(optionalReviewers, getNextReviewer(&reviewerGroups[index], review))
 		}
 	}
-
+	
 	reviewerGroups.savePositions()
-
 	return requiredReviewers, optionalReviewers
 }
 
