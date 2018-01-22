@@ -80,10 +80,11 @@ func TestGetReviewers(t *testing.T) {
 }
 
 func TestLoadReviewerGroups(t *testing.T) {
-	actualReviewerGroups := loadReviewerGroups()
+	
+	reviewerGroups.loadReviewerGroups()
 
-	assert.Equal(t, 3, len(actualReviewerGroups), "Must have the correct length of reviewerGroup")
+	assert.Equal(t, 3, len(reviewerGroups), "Must have the correct length of reviewerGroup")
 
-	assert.Equal(t, expectedReviewerGroups[0].Reviewers[0], actualReviewerGroups[0].Reviewers[0])
-	assert.Equal(t, expectedReviewerGroups[0].Required, actualReviewerGroups[0].Required)
+	assert.Equal(t, expectedReviewerGroups[0].Reviewers[0], reviewerGroups[0].Reviewers[0])
+	assert.Equal(t, expectedReviewerGroups[0].Required, reviewerGroups[0].Required)
 }

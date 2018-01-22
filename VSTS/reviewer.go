@@ -6,8 +6,58 @@ import (
 	"log"
 )
 
+var (
+	ReviewerFile = "./configs/reviewers.json"
+	StatusFile = "./configs/currentStatus.json"
+
+	reviewerGroups ReviewerGroups
+)
+
 // ReviewerGroups is a list of type ReviewerGroup
 type ReviewerGroups []ReviewerGroup
+
+func (reviewerGroups *ReviewerGroups) loadReviewerGroups() {
+	rawReviewerData, err := ioutil.ReadFile(ReviewerFile)
+	if err != nil {
+		log.Fatal("Could not load ", ReviewerFile)
+	}
+
+	json.Unmarshal(rawReviewerData, reviewerGroups)
+
+	rawPosData, err := ioutil.ReadFile(StatusFile)
+	if err != nil {
+		log.Printf("Could not load %s. Using default positions.", StatusFile)
+		return
+	}
+	
+	var reviewerPoses ReviewerPositions
+	json.Unmarshal(rawPosData, &reviewerPoses)
+
+	for _, reviewerGroup := range *reviewerGroups{
+		if pos, ok := reviewerPoses[reviewerGroup.Group]; ok{
+			reviewerGroup.CurrentPos = pos
+		}
+	}
+}
+
+func (reviewerGroups ReviewerGroups) savePositions(){
+	reviewerPositions := make(ReviewerPositions)
+	for _,  reviewerGroup := range reviewerGroups {
+		reviewerPositions[reviewerGroup.Group] = reviewerGroup.CurrentPos
+	}
+	
+	data, err := json.Marshal(reviewerPositions)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := ioutil.WriteFile(StatusFile, data, 0644); err != nil {
+		log.Fatal(err)
+	}
+}
+
+type ReviewerPositions map[string]int
+
 
 // ReviewerGroup holds the reviwers and metadata for a review group.
 type ReviewerGroup struct {
@@ -42,12 +92,8 @@ type ReviewSummary struct {
 	ReviewType   string
 }
 
-var (
-	reviewerGroups ReviewerGroups
-)
-
 func init() {
-	reviewerGroups = loadReviewerGroups()
+	reviewerGroups.loadReviewerGroups()
 }
 
 // GetReviewersAlias gets all aliases for the set of passed in reviewers
@@ -59,18 +105,6 @@ func GetReviewersAlias(reviewers []Reviewer) []string {
 		aliases[index] = reviewer.Alias
 	}
 	return aliases
-}
-
-func loadReviewerGroups() ReviewerGroups {
-	rawData, err := ioutil.ReadFile("./configs/reviewers.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	reviewerGroups := ReviewerGroups{}
-	json.Unmarshal(rawData, &reviewerGroups)
-
-	return reviewerGroups
 }
 
 // GetReviewers gets the required and optional reviewers for a review
@@ -87,7 +121,8 @@ func GetReviewers(review ReviewSummary) ([]Reviewer, []Reviewer) {
 			optionalReviewers = append(optionalReviewers, getNextReviewer(&reviewerGroups[index], review))
 		}
 	}
-
+	
+	reviewerGroups.savePositions()
 	return requiredReviewers, optionalReviewers
 }
 
