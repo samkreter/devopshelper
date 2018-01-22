@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	timer := time.NewTicker(time.Second * 1)
+	timer := time.NewTicker(time.Second * 30)
 
 	for _ = range timer.C {
 		if err := cmd.Run(); err != nil {
