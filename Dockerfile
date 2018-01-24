@@ -3,8 +3,7 @@ WORKDIR /go/src/github.com/samkreter/VSTSAutoReviewer/
 COPY . /go/src/github.com/samkreter/VSTSAutoReviewer/
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o run .
 
-FROM alpine:latest  
-RUN apk --no-cache add ca-certificates
+FROM scratch
 WORKDIR /root/
 COPY --from=builder /go/src/github.com/samkreter/VSTSAutoReviewer/run .
 CMD ["./run"]

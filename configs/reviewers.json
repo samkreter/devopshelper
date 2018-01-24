@@ -1,55 +1,70 @@
-
 [
     {
         "group": "Tier1",
         "required": true,
-        "reviewers":[
+        "reviewers": [
             {
-                "id": "59f5450f-2488-4192-b345-c251e2f58d93",
-                "uniqueName": "junjiez@microsoft.com",
-                "alias": "junjiez"
-            },
+                "id": "62f9a684-d63c-4806-981f-5f535e2adf51",
+                "uniqueName": null,
+                "Alias": "yangl"
+            }, 
             {
                 "id": "9683fa96-1564-435f-89ba-9dee4bc4810b",
-                "uniqueName": "wenwu@microsoft.com",
-                "alias": "wenwu"
+                "uniqueName": null,
+                "Alias": "wenwu"
+            }, 
+            {
+                "id": "59f5450f-2488-4192-b345-c251e2f58d93",
+                "uniqueName": null,
+                "Alias": "junjiez"
             },
             {
-                "id": "b440e3d4-0a89-4ac6-bdc3-be6a9845ff6b", 
-                "uniqueName": "harryh@microsoft.com",
-                "alias": "harryh"
-            }
-        ]
-    },
+                "id": "b440e3d4-0a89-4ac6-bdc3-be6a9845ff6b",
+                "uniqueName": null,
+                "Alias": "harryh"
+        }, {
+                "id": "08a67e1e-1074-43b5-9f02-76fbe5d97325",
+                "uniqueName": null,
+                "Alias": "tonyxu"
+        }]
+    }, 
     {
         "group": "Tier2",
         "required": true,
         "reviewers": [
             {
-                "id": "3a883e38-d0ad-62e5-aff2-e30dca0db57e",
-                "uniqueName": "sakreter@microsoft.com",
-                "alias": "sakreter"
-            },
-            {
-                "id": "5e65610f-d70a-41bc-9077-c38a4156e3d1",
-                "uniqueName": "chshou@microsoft.com",
-                "alias": "chshou"
-            },
+                "id": "f1768aae-262f-4f14-bad6-71ef09623365",
+                "uniqueName": null,
+                "Alias": "xizha"
+            }, 
             {
                 "id": "e89ff286-5c15-43e1-8840-f48da700417e",
-                "uniqueName": "xiazhan@microsoft.com",
-                "alias": "xiazhan"
-            },
+                "uniqueName": null,
+                "Alias": "xiazhan"
+            }, 
             {
-                "id": "08a67e1e-1074-43b5-9f02-76fbe5d97325",
-                "uniqueName": "tonyxu@microsoft.com",
-                "alias": "tonyxu"
+                "id": "5e65610f-d70a-41bc-9077-c38a4156e3d1",
+                "uniqueName": null,
+                "Alias": "chshou"
             },
             {
                 "id": "9d0d64ab-5da8-6fc9-9ab8-2c907bb73a34",
-                "uniqueName": "rosturm@microsoft.com",
-                "alias": "rosturm"
+                "uniqueName": null,
+                "Alias": "rosturm"
+            },
+            {
+                "id": "3a883e38-d0ad-62e5-aff2-e30dca0db57e",
+                "uniqueName": null,
+                "Alias": "sakreter"
             }
         ]
+    }, {
+        "group": "Observer",
+        "required": false,
+        "reviewers": [{
+            "id": "62f9a684-d63c-4806-981f-5f535e2adf51",
+            "uniqueName": null,
+            "Alias": "yangl"
+        }]
     }
 ]
