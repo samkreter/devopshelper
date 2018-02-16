@@ -4,9 +4,21 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/samkreter/VSTSAutoReviewer/vsts"
 )
+
+func RunInterval() {
+	timer := time.NewTicker(time.Second * 30)
+
+	for _ = range timer.C {
+		if err := Run(); err != nil {
+			log.Println("Error for main run", err)
+		}
+		log.Println("Running Review cycle...")
+	}
+}
 
 func Run() error {
 	reviews := vsts.GetInprogressReviews()

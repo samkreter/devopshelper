@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	ReviewerFile = "./configs/reviewers.json"
-	StatusFile = "./configs/currentStatus.json"
+	ReviewerFile = "/configs/reviewers.json"
+	StatusFile   = "/configs/currentStatus.json"
 
 	reviewerGroups ReviewerGroups
 )
@@ -26,26 +26,26 @@ func (reviewerGroups *ReviewerGroups) loadReviewerGroups() {
 
 	rawPosData, err := ioutil.ReadFile(StatusFile)
 	if err != nil {
-		log.Printf("Could not load %s. Using default positions.", StatusFile)
+		log.Fatalf("Could not load current state file %s.", StatusFile)
 		return
 	}
-	
+
 	var reviewerPoses ReviewerPositions
 	json.Unmarshal(rawPosData, &reviewerPoses)
 
-	for _, reviewerGroup := range *reviewerGroups{
-		if pos, ok := reviewerPoses[reviewerGroup.Group]; ok{
-			reviewerGroup.CurrentPos = pos
+	for index, reviewerGroup := range *reviewerGroups {
+		if pos, ok := reviewerPoses[reviewerGroup.Group]; ok {
+			(*reviewerGroups)[index].CurrentPos = pos
 		}
 	}
 }
 
-func (reviewerGroups ReviewerGroups) savePositions(){
+func (reviewerGroups ReviewerGroups) savePositions() {
 	reviewerPositions := make(ReviewerPositions)
-	for _,  reviewerGroup := range reviewerGroups {
+	for _, reviewerGroup := range reviewerGroups {
 		reviewerPositions[reviewerGroup.Group] = reviewerGroup.CurrentPos
 	}
-	
+
 	data, err := json.Marshal(reviewerPositions)
 	if err != nil {
 		log.Fatal(err)
@@ -54,10 +54,12 @@ func (reviewerGroups ReviewerGroups) savePositions(){
 	if err := ioutil.WriteFile(StatusFile, data, 0644); err != nil {
 		log.Fatal(err)
 	}
+
+	log.Println("SAVE FILE #########################")
+	log.Println(string(data))
 }
 
 type ReviewerPositions map[string]int
-
 
 // ReviewerGroup holds the reviwers and metadata for a review group.
 type ReviewerGroup struct {
@@ -121,7 +123,7 @@ func GetReviewers(review ReviewSummary) ([]Reviewer, []Reviewer) {
 			optionalReviewers = append(optionalReviewers, getNextReviewer(&reviewerGroups[index], review))
 		}
 	}
-	
+
 	reviewerGroups.savePositions()
 	return requiredReviewers, optionalReviewers
 }

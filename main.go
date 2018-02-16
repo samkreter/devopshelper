@@ -9,12 +9,11 @@ import (
 
 func main() {
 
-	timer := time.NewTicker(time.Second * 30)
+	log.Println("Starting Reviewer...")
 
-	for _ = range timer.C {
-		if err := cmd.Run(); err != nil {
-			log.Println("Error for main run", err)
-		}
-		log.Println("Running Review cycle...")
+	if err := cmd.Run(); err != nil {
+		log.Println("Error for main run", err)
 	}
+	log.Println(time.Now(), ": Finished Balancing Cycle")
+
 }

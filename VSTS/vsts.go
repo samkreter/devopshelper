@@ -35,8 +35,10 @@ func readConfig(filename string, envPrefix string, defaults map[string]interface
 	for key, value := range defaults {
 		v.SetDefault(key, value)
 	}
+
 	v.SetConfigName(filename)
-	v.AddConfigPath("./configs")
+	v.AddConfigPath("/configs")
+	//v.AddConfigPath("./configs")
 	v.SetEnvPrefix(envPrefix)
 	v.AutomaticEnv()
 	err := v.ReadInConfig()
