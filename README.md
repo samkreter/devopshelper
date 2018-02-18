@@ -8,7 +8,7 @@ Different reviewer groups and wheather the reviewer is optional is specificed th
 
 1. Create an Azure Storage Account using either the portal or the CLI. 
 
-2. Add the reviewers.json file to the file share. An example of the format can be found in the examples folder.
+2. Add the reviewers.json and vsts.config.json file to the file share. An example of the format for each can be found in the examples folder. the name of the configuration file can be changed by using the ENV variable VSTS_CONFIG_FILE. 
 
 3. Either build and push the image to a container registry or the latest stable version can be pulled from the dockerhub repository pskreter/vstsreviewer:stable
 
