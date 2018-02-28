@@ -24,7 +24,7 @@ type vstsConfig struct {
 var (
 	//Config holds the vsts configuration.
 	Config                  = vstsConfig{}
-	pullRequestsURITemplate = "DefaultCollection/{project}/_apis/git/repositories/{repositoryName}/pullRequests?api-version={apiVersion}"
+	pullRequestsURITemplate = "DefaultCollection/{project}/_apis/git/repositories/{repositoryName}/pullRequests?api-version={apiVersion}&targetRefName=refs/heads/master"
 	commentsURITemplate     = "DefaultCollection/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/threads?api-version={apiVersion}"
 	reviewerURITemplate     = "DefaultCollection/{project}/_apis/git/repositories/{repositoryId}/pullRequests/{pullRequestId}/reviewers/{reviewerId}?api-version={apiVersion}"
 	vstsBaseURI             = "https://msazure.visualstudio.com/"
