@@ -15,32 +15,38 @@ import (
 // Filter is a function returns true if a pull request should be filtered out.
 type Filter func(vstsObj.GitPullRequest) bool
 
+// ReviwerTrigger is called with the reviewers that have been selected. Allows for adding custom events
+//  for each reviewer.
+type ReviwerTrigger func([]Reviewer, string) error
+
 // AutoReviewer automaticly adds reviewers to a vsts pull request
 type AutoReviewer struct {
-	Repository     string
-	filters        []Filter
-	vstsClient     *vsts.Client
-	reviewerGroups *ReviewerGroups
-	reviewerFile   string
-	statusFile     string
-	botMaker       string
+	Repository       string
+	filters          []Filter
+	reviewerTriggers []ReviwerTrigger
+	vstsClient       *vsts.Client
+	reviewerGroups   *ReviewerGroups
+	reviewerFile     string
+	statusFile       string
+	botMaker         string
 }
 
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(vstsClient *vsts.Client, botMaker, reviewerFile, statusFile string, filters []Filter) (*AutoReviewer, error) {
+func NewAutoReviewer(vstsClient *vsts.Client, botMaker, reviewerFile, statusFile string, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
 	reviewerGroups, err := loadReviewerGroups(reviewerFile, statusFile)
 	if err != nil {
 		return nil, err
 	}
 
 	return &AutoReviewer{
-		Repository:     vstsClient.Repo,
-		vstsClient:     vstsClient,
-		filters:        filters,
-		reviewerGroups: reviewerGroups,
-		reviewerFile:   reviewerFile,
-		statusFile:     statusFile,
-		botMaker:       botMaker,
+		Repository:       vstsClient.Repo,
+		vstsClient:       vstsClient,
+		filters:          filters,
+		reviewerTriggers: rTriggers,
+		reviewerGroups:   reviewerGroups,
+		reviewerFile:     reviewerFile,
+		statusFile:       statusFile,
+		botMaker:         botMaker,
 	}, nil
 }
 
@@ -109,6 +115,13 @@ func (a *AutoReviewer) balanceReview(pullRequest vstsObj.GitPullRequest) error {
 			GetReviewersAlias(requiredReviewers),
 			GetReviewersAlias(requiredReviewers),
 			pullRequest.PullRequestId)
+
+		pullRequestURL := getPullRequestURL(a.vstsClient.Instance, a.vstsClient.Project, a.vstsClient.Repo, pullRequest.PullRequestId)
+		for _, rTrigger := range a.reviewerTriggers {
+			if err := rTrigger(requiredReviewers, pullRequestURL); err != nil {
+				log.Printf("ERROR: %v", err)
+			}
+		}
 	}
 
 	return nil
@@ -147,6 +160,15 @@ func (a *AutoReviewer) AddReviewers(pullRequestID int32, required, optional []Re
 	}
 
 	return nil
+}
+
+func getPullRequestURL(instance, project, repository string, pullRequestID int32) string {
+	return fmt.Sprintf(
+		"https://%s/DefaultCollection/%s/_git/%s/pullrequest/%d",
+		instance,
+		project,
+		repository,
+		pullRequestID)
 }
 
 // ReviewerGroups is a list of type ReviewerGroup
