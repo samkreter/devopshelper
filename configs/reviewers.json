@@ -1,0 +1,34 @@
+[
+    {
+        "group": "Tier1",
+        "required": true,
+        "reviewers": [
+            {
+                "id": "id",
+                "uniqueName": null,
+                "Alias": "alias"
+            }
+        ]
+    }, 
+    {
+        "group": "Tier2",
+        "required": true,
+        "reviewers": [
+            {
+                "id": "id",
+                "uniqueName": null,
+                "Alias": "alias"
+            }
+        ]
+    }, {
+        "group": "Observer",
+        "required": false,
+        "reviewers": [
+            {
+                "id": "id",
+                "uniqueName": null,
+                "Alias": "alias"
+            }
+        ]
+    }
+]

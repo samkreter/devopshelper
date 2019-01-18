@@ -1,0 +1,8 @@
+{
+    "token": "<personal-access-token>",
+    "username": "<username>",
+    "apiVersion": "3.0",
+    "repositoryName": "<repo-name>",
+    "instance": "<instance, EX:msazure.visualstudio.com>",
+    "project": "<project>"
+}
