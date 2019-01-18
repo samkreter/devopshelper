@@ -26,6 +26,14 @@
 
 
 [[constraint]]
+  branch = "master"
+  name = "github.com/antihax/optional"
+
+[[constraint]]
+  name = "github.com/nlopes/slack"
+  version = "0.4.0"
+
+[[constraint]]
   name = "github.com/samkreter/vsts-goclient"
   version = "0.0.2"
 

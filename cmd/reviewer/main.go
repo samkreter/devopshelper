@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"images/vstsAutoReviewer/autoreviewer"
+	"github.com/samkreter/VSTSAutoReviewer/autoreviewer"
 
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
@@ -103,7 +103,20 @@ func getAutoReviewers(repoInfo repositoryInfo, config Config) (*autoreviewer.Aut
 		filterWIP,
 	}
 
-	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, config.BotMaker, config.ReviewerFile, config.StatusFile, filters)
+	reviewerTriggers := make([]autoreviewer.ReviwerTrigger, 0)
+
+	slackTriggerPath, ok := os.LookupEnv("SLACK_TRIGGER_PATH")
+	if ok {
+		slackTrigger, err := autoreviewer.NewSlackTrigger(slackTriggerPath)
+		if err != nil {
+			log.Printf("ERROR: Failed to create slack trigger with error: %v", err)
+		} else {
+			reviewerTriggers = append(reviewerTriggers, slackTrigger)
+			log.Println("Adding Slack Reviewer Trigger...")
+		}
+	}
+
+	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, config.BotMaker, config.ReviewerFile, config.StatusFile, filters, reviewerTriggers)
 	if err != nil {
 		return nil, err
 	}
