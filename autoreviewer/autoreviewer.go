@@ -92,7 +92,10 @@ func (a *AutoReviewer) Run() error {
 
 func (a *AutoReviewer) balanceReview(pullRequest vstsObj.GitPullRequest) error {
 	if !a.ContainsReviewBalancerComment(pullRequest.PullRequestId) {
-		requiredReviewers, optionalReviewers := a.reviewerGroups.GetReviewers(pullRequest.CreatedBy.ID, a.statusFile)
+		requiredReviewers, optionalReviewers, err := a.reviewerGroups.GetReviewers(pullRequest.CreatedBy.ID, a.statusFile)
+		if err != nil {
+			return err
+		}
 
 		if err := a.AddReviewers(pullRequest.PullRequestId, requiredReviewers, optionalReviewers); err != nil {
 			return fmt.Errorf("add reviewers error: %v", err)
@@ -195,11 +198,14 @@ type Reviewer struct {
 func loadReviewerGroups(reviewerFile, statusFile string) (*ReviewerGroups, error) {
 	rawReviewerData, err := ioutil.ReadFile(reviewerFile)
 	if err != nil {
-		log.Fatal("Could not load ", reviewerFile)
+		return nil, fmt.Errorf("Could not load %s", reviewerFile)
 	}
 
 	var reviewerGroups ReviewerGroups
-	json.Unmarshal(rawReviewerData, &reviewerGroups)
+	err = json.Unmarshal(rawReviewerData, &reviewerGroups)
+	if err != nil {
+		return nil, err
+	}
 
 	rawPosData, err := ioutil.ReadFile(statusFile)
 	if err != nil {
@@ -207,7 +213,10 @@ func loadReviewerGroups(reviewerFile, statusFile string) (*ReviewerGroups, error
 	}
 
 	var reviewerPoses ReviewerPositions
-	json.Unmarshal(rawPosData, &reviewerPoses)
+	err = json.Unmarshal(rawPosData, &reviewerPoses)
+	if err != nil {
+		return nil, err
+	}
 
 	for index, reviewerGroup := range reviewerGroups {
 		if pos, ok := reviewerPoses[reviewerGroup.Group]; ok {
@@ -218,7 +227,7 @@ func loadReviewerGroups(reviewerFile, statusFile string) (*ReviewerGroups, error
 	return &reviewerGroups, nil
 }
 
-func (rg *ReviewerGroups) savePositions(statusFile string) {
+func (rg *ReviewerGroups) savePositions(statusFile string) error {
 	reviewerPositions := make(ReviewerPositions)
 	for _, reviewerGroup := range *rg {
 		reviewerPositions[reviewerGroup.Group] = reviewerGroup.CurrentPos
@@ -226,14 +235,15 @@ func (rg *ReviewerGroups) savePositions(statusFile string) {
 
 	data, err := json.Marshal(reviewerPositions)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if err := ioutil.WriteFile(statusFile, data, 0644); err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	log.Println("INFO: Saving position file.")
+	return nil
 }
 
 func (g *ReviewerGroup) getCurrentReviewer() Reviewer {
@@ -258,7 +268,7 @@ func GetReviewersAlias(reviewers []Reviewer) []string {
 // GetReviewers gets the required and optional reviewers for a review
 // review: the review summary
 // return: returns a slice of require reviewers and a slice of optional reviewers
-func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) ([]Reviewer, []Reviewer) {
+func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) ([]Reviewer, []Reviewer, error) {
 	requiredReviewers := make([]Reviewer, 0, len(*rg)/2)
 	optionalReviewers := make([]Reviewer, 0, len(*rg)/2)
 
@@ -270,8 +280,11 @@ func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) 
 		}
 	}
 
-	rg.savePositions(statusFile)
-	return requiredReviewers, optionalReviewers
+	if err := rg.savePositions(statusFile); err != nil {
+		return nil, nil, err
+	}
+
+	return requiredReviewers, optionalReviewers, nil
 }
 
 func getNextReviewer(group *ReviewerGroup, pullRequestCreatorID string) Reviewer {
