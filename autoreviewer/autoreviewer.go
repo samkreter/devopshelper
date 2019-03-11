@@ -16,7 +16,7 @@ import (
 type Filter func(vstsObj.GitPullRequest) bool
 
 // ReviwerTrigger is called with the reviewers that have been selected. Allows for adding custom events
-//  for each reviewer.
+//  for each reviewer that is added to the PR. Ex: slack notification.
 type ReviwerTrigger func([]Reviewer, string) error
 
 // AutoReviewer automaticly adds reviewers to a vsts pull request
@@ -31,8 +31,15 @@ type AutoReviewer struct {
 	botMaker         string
 }
 
+// ReviewerInfo describes who to be added as a reviwer and which files to watch for
+type ReviewerInfo struct {
+	File           string   `json:"file"`
+	ActivePaths    []string `json:"activePaths"`
+	reviewerGroups ReviewerGroups
+}
+
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(vstsClient *vsts.Client, botMaker, reviewerFile, statusFile string, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
+func NewAutoReviewer(vstsClient *vsts.Client, botMaker, reviewerInfos []ReviewerInfo, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
 	reviewerGroups, err := loadReviewerGroups(reviewerFile, statusFile)
 	if err != nil {
 		return nil, err
@@ -92,6 +99,8 @@ func (a *AutoReviewer) Run() error {
 
 func (a *AutoReviewer) balanceReview(pullRequest vstsObj.GitPullRequest) error {
 	if !a.ContainsReviewBalancerComment(pullRequest.PullRequestId) {
+		//TODO: check for list of file changes
+
 		requiredReviewers, optionalReviewers, err := a.reviewerGroups.GetReviewers(pullRequest.CreatedBy.ID, a.statusFile)
 		if err != nil {
 			return err

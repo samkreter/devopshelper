@@ -6,7 +6,13 @@
     "repositoryInfos": [
         {
             "projectName": "<project>",
-            "repositoryName": "<repo-name>"
+            "repositoryName": "<repo-name>",
+            "reviewerInfos": [
+                {  
+                    "file": "reviwers.json",
+                    "activePaths": ["/pkg", "/tf2"]
+                }
+            ]
         }
     ],
     "instance": "<instance>"
