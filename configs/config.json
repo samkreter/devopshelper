@@ -9,7 +9,8 @@
             "repositoryName": "<repo-name>",
             "reviewerInfos": [
                 {  
-                    "file": "reviwers.json",
+                    "reviewerFile": "reviwers.json",
+                    "statusFile": "currentStatus.json",
                     "activePaths": ["/pkg", "/tf2"]
                 }
             ]
