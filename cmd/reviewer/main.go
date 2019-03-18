@@ -25,15 +25,14 @@ type Config struct {
 	BotMaker        string           `json:"botMaker"`
 	RepositoryInfos []RepositoryInfo `json:"repositoryInfos"`
 	Instance        string           `json:"instance"`
-	ReviewerFile    string           `json:"reviewerFile"`
-	StatusFile      string           `json:"statusFile"`
 }
 
 // RepositoryInfo information describing each repository to review
 type RepositoryInfo struct {
-	ProjectName    string                      `json:"projectName"`
-	RepositoryName string                      `json:"repositoryName"`
-	Reviewers      []autoreviewer.ReviewerInfo `json:"reviewerInfos"`
+	ProjectName    string `json:"projectName"`
+	RepositoryName string `json:"repositoryName"`
+	ReviewerFile   string `json:"reviewerFile"`
+	StatusFile     string `json:"reviewerStatusFile"`
 }
 
 func main() {
@@ -54,14 +53,6 @@ func main() {
 	var config Config
 	if err := json.NewDecoder(configFile).Decode(&config); err != nil {
 		log.Fatal(err)
-	}
-
-	if config.ReviewerFile == "" {
-		config.ReviewerFile = defaultReviewerFile
-	}
-
-	if config.StatusFile == "" {
-		config.StatusFile = defaultStatusFile
 	}
 
 	aReviewers := make([]*autoreviewer.AutoReviewer, 0, len(config.RepositoryInfos))
@@ -119,7 +110,7 @@ func getAutoReviewers(repoInfo RepositoryInfo, config Config) (*autoreviewer.Aut
 		}
 	}
 
-	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, config.BotMaker, config.ReviewerFile, config.StatusFile, filters, reviewerTriggers)
+	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, config.BotMaker, repoInfo.ReviewerFile, repoInfo.StatusFile, filters, reviewerTriggers)
 	if err != nil {
 		return nil, err
 	}

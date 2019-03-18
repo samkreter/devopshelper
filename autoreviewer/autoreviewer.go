@@ -39,7 +39,7 @@ type ReviewerInfo struct {
 }
 
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(vstsClient *vsts.Client, botMaker, reviewerInfos []ReviewerInfo, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
+func NewAutoReviewer(vstsClient *vsts.Client, botMaker, reviewerFile, statusFile string, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
 	reviewerGroups, err := loadReviewerGroups(reviewerFile, statusFile)
 	if err != nil {
 		return nil, err
@@ -99,8 +99,6 @@ func (a *AutoReviewer) Run() error {
 
 func (a *AutoReviewer) balanceReview(pullRequest vstsObj.GitPullRequest) error {
 	if !a.ContainsReviewBalancerComment(pullRequest.PullRequestId) {
-		//TODO: check for list of file changes
-
 		requiredReviewers, optionalReviewers, err := a.reviewerGroups.GetReviewers(pullRequest.CreatedBy.ID, a.statusFile)
 		if err != nil {
 			return err
