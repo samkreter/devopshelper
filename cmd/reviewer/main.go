@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/samkreter/VSTSAutoReviewer/autoreviewer"
+	"github.com/samkreter/vstsautoreviewer/autoreviewer"
 
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
@@ -22,17 +22,17 @@ type Config struct {
 	Token           string           `json:"token"`
 	Username        string           `json:"username"`
 	APIVersion      string           `json:"apiVersion"`
-	RepositoryInfos []repositoryInfo `json:"repositoryInfos"`
-	Project         string           `json:"project"`
-	Instance        string           `json:"instance"`
 	BotMaker        string           `json:"botMaker"`
-	ReviewerFile    string           `json:"reviewerFile"`
-	StatusFile      string           `json:"statusFile"`
+	RepositoryInfos []RepositoryInfo `json:"repositoryInfos"`
+	Instance        string           `json:"instance"`
 }
 
-type repositoryInfo struct {
-	RepositoryName string `json:"repositoryName"`
+// RepositoryInfo information describing each repository to review
+type RepositoryInfo struct {
 	ProjectName    string `json:"projectName"`
+	RepositoryName string `json:"repositoryName"`
+	ReviewerFile   string `json:"reviewerFile"`
+	StatusFile     string `json:"reviewerStatusFile"`
 }
 
 func main() {
@@ -55,19 +55,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if config.ReviewerFile == "" {
-		config.ReviewerFile = defaultReviewerFile
-	}
-
-	if config.StatusFile == "" {
-		config.StatusFile = defaultStatusFile
-	}
-
 	aReviewers := make([]*autoreviewer.AutoReviewer, 0, len(config.RepositoryInfos))
 	for _, repoInfo := range config.RepositoryInfos {
 		aReviewer, err := getAutoReviewers(repoInfo, config)
 		if err != nil {
 			log.Printf("ERROR: Failed to init reviewer for repo: %s/%s with err: %v", repoInfo.ProjectName, repoInfo.RepositoryName, err)
+			continue
 		}
 
 		aReviewers = append(aReviewers, aReviewer)
@@ -84,7 +77,7 @@ func main() {
 	log.Println("Finished Reviewing for all repositories")
 }
 
-func getAutoReviewers(repoInfo repositoryInfo, config Config) (*autoreviewer.AutoReviewer, error) {
+func getAutoReviewers(repoInfo RepositoryInfo, config Config) (*autoreviewer.AutoReviewer, error) {
 	vstsConfig := &vsts.Config{
 		Token:          config.Token,
 		Username:       config.Username,
@@ -101,6 +94,7 @@ func getAutoReviewers(repoInfo repositoryInfo, config Config) (*autoreviewer.Aut
 
 	filters := []autoreviewer.Filter{
 		filterWIP,
+		filterMasterBranchOnly,
 	}
 
 	reviewerTriggers := make([]autoreviewer.ReviwerTrigger, 0)
@@ -116,7 +110,7 @@ func getAutoReviewers(repoInfo repositoryInfo, config Config) (*autoreviewer.Aut
 		}
 	}
 
-	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, config.BotMaker, config.ReviewerFile, config.StatusFile, filters, reviewerTriggers)
+	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, config.BotMaker, repoInfo.ReviewerFile, repoInfo.StatusFile, filters, reviewerTriggers)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +120,14 @@ func getAutoReviewers(repoInfo repositoryInfo, config Config) (*autoreviewer.Aut
 
 func filterWIP(pr vstsObj.GitPullRequest) bool {
 	if strings.Contains(pr.Title, "WIP") {
+		return true
+	}
+
+	return false
+}
+
+func filterMasterBranchOnly(pr vstsObj.GitPullRequest) bool {
+	if strings.EqualFold(pr.TargetRefName, "refs/heads/master") {
 		return true
 	}
 

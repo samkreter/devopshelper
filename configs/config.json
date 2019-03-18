@@ -6,7 +6,9 @@
     "repositoryInfos": [
         {
             "projectName": "<project>",
-            "repositoryName": "<repo-name>"
+            "repositoryName": "<repo-name>",
+            "reviewerFile": "<reviewer-file.json>",
+            "reviewerStatusFile": "<reviewer-status-file.json>"
         }
     ],
     "instance": "<instance>"

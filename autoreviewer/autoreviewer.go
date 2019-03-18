@@ -16,7 +16,7 @@ import (
 type Filter func(vstsObj.GitPullRequest) bool
 
 // ReviwerTrigger is called with the reviewers that have been selected. Allows for adding custom events
-//  for each reviewer.
+//  for each reviewer that is added to the PR. Ex: slack notification.
 type ReviwerTrigger func([]Reviewer, string) error
 
 // AutoReviewer automaticly adds reviewers to a vsts pull request
@@ -29,6 +29,13 @@ type AutoReviewer struct {
 	reviewerFile     string
 	statusFile       string
 	botMaker         string
+}
+
+// ReviewerInfo describes who to be added as a reviwer and which files to watch for
+type ReviewerInfo struct {
+	File           string   `json:"file"`
+	ActivePaths    []string `json:"activePaths"`
+	reviewerGroups ReviewerGroups
 }
 
 // NewAutoReviewer creates a new autoreviewer
