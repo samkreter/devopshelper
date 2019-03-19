@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/samkreter/VSTSAutoReviewer/slack"
+	"github.com/samkreter/vstsautoreviewer/slack"
 )
 
 const (
