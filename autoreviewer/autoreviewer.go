@@ -214,15 +214,15 @@ func loadReviewerGroups(reviewerFile, statusFile string) (*ReviewerGroups, error
 		return nil, err
 	}
 
-	rawPosData, err := ioutil.ReadFile(statusFile)
-	if err != nil {
-		return nil, fmt.Errorf("could not load current state file %s", statusFile)
-	}
+	reviewerPoses := ReviewerPositions{}
 
-	var reviewerPoses ReviewerPositions
-	err = json.Unmarshal(rawPosData, &reviewerPoses)
-	if err != nil {
-		return nil, err
+	rawPosData, err := ioutil.ReadFile(statusFile)
+	if err == nil {
+		// if file exists use it, otherwise create a new one
+		err = json.Unmarshal(rawPosData, &reviewerPoses)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for index, reviewerGroup := range reviewerGroups {
