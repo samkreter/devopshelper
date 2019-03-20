@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -215,14 +216,19 @@ func loadReviewerGroups(reviewerFile, statusFile string) (*ReviewerGroups, error
 	}
 
 	reviewerPoses := ReviewerPositions{}
+	if _, err := os.Stat(statusFile); os.IsNotExist(err) {
+		// Create the current pos file if it doesn't exist
+		reviewerGroups.savePositions(statusFile)
+	}
 
 	rawPosData, err := ioutil.ReadFile(statusFile)
-	if err == nil {
-		// if file exists use it, otherwise create a new one
-		err = json.Unmarshal(rawPosData, &reviewerPoses)
-		if err != nil {
-			return nil, err
-		}
+	if err != nil {
+		return nil, fmt.Errorf("failed to read status file err: '%v'", err)
+	}
+
+	err = json.Unmarshal(rawPosData, &reviewerPoses)
+	if err != nil {
+		return nil, err
 	}
 
 	for index, reviewerGroup := range reviewerGroups {

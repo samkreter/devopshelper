@@ -128,8 +128,8 @@ func filterWIP(pr vstsObj.GitPullRequest) bool {
 
 func filterMasterBranchOnly(pr vstsObj.GitPullRequest) bool {
 	if strings.EqualFold(pr.TargetRefName, "refs/heads/master") {
-		return true
+		return false
 	}
 
-	return false
+	return true
 }
