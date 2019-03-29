@@ -1,39 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/samkreter/vstsautoreviewer/autoreviewer"
+	"github.com/samkreter/vstsautoreviewer/pkg/autoreviewer"
+	"github.com/samkreter/vstsautoreviewer/pkg/config"
 
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
 )
-
-var (
-	defaultReviewerFile = "/configs/reviewers.json"
-	defaultStatusFile   = "/configs/currentStatus.json"
-)
-
-// Config holds the configuration from the config file
-type Config struct {
-	Token           string           `json:"token"`
-	Username        string           `json:"username"`
-	APIVersion      string           `json:"apiVersion"`
-	BotMaker        string           `json:"botMaker"`
-	RepositoryInfos []RepositoryInfo `json:"repositoryInfos"`
-	Instance        string           `json:"instance"`
-}
-
-// RepositoryInfo information describing each repository to review
-type RepositoryInfo struct {
-	ProjectName    string `json:"projectName"`
-	RepositoryName string `json:"repositoryName"`
-	ReviewerFile   string `json:"reviewerFile"`
-	StatusFile     string `json:"reviewerStatusFile"`
-}
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
@@ -43,21 +20,14 @@ func main() {
 		log.Fatal("CONFIG_PATH not set")
 	}
 
-	configFile, err := os.Open(configFilePath)
+	conf, err := config.LoadConfig(configFilePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer configFile.Close()
-
-	var config Config
-	if err := json.NewDecoder(configFile).Decode(&config); err != nil {
-		log.Fatal(err)
-	}
-
-	aReviewers := make([]*autoreviewer.AutoReviewer, 0, len(config.RepositoryInfos))
-	for _, repoInfo := range config.RepositoryInfos {
-		aReviewer, err := getAutoReviewers(repoInfo, config)
+	aReviewers := make([]*autoreviewer.AutoReviewer, 0, len(conf.RepositoryInfos))
+	for _, repoInfo := range conf.RepositoryInfos {
+		aReviewer, err := getAutoReviewers(repoInfo, conf)
 		if err != nil {
 			log.Printf("ERROR: Failed to init reviewer for repo: %s/%s with err: %v", repoInfo.ProjectName, repoInfo.RepositoryName, err)
 			continue
@@ -77,14 +47,14 @@ func main() {
 	log.Println("Finished Reviewing for all repositories")
 }
 
-func getAutoReviewers(repoInfo RepositoryInfo, config Config) (*autoreviewer.AutoReviewer, error) {
+func getAutoReviewers(repoInfo *config.RepositoryInfo, conf *config.Config) (*autoreviewer.AutoReviewer, error) {
 	vstsConfig := &vsts.Config{
-		Token:          config.Token,
-		Username:       config.Username,
-		APIVersion:     config.APIVersion,
+		Token:          conf.Token,
+		Username:       conf.Username,
+		APIVersion:     conf.APIVersion,
 		RepositoryName: repoInfo.RepositoryName,
 		Project:        repoInfo.ProjectName,
-		Instance:       config.Instance,
+		Instance:       conf.Instance,
 	}
 
 	vstsClient, err := vsts.NewClient(vstsConfig)
@@ -110,7 +80,7 @@ func getAutoReviewers(repoInfo RepositoryInfo, config Config) (*autoreviewer.Aut
 		}
 	}
 
-	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, config.BotMaker, repoInfo.ReviewerFile, repoInfo.StatusFile, filters, reviewerTriggers)
+	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, conf.BotMaker, repoInfo.ReviewerFile, repoInfo.StatusFile, filters, reviewerTriggers)
 	if err != nil {
 		return nil, err
 	}
