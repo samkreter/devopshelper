@@ -35,7 +35,7 @@
 
 [[constraint]]
   name = "github.com/samkreter/vsts-goclient"
-  version = "0.0.2"
+  version = "0.0.3"
 
 [prune]
   go-tests = true

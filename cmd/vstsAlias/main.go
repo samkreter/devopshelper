@@ -10,47 +10,20 @@ import (
 	"os"
 	"strings"
 
-	"github.com/antihax/optional"
-
-	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
+	"github.com/samkreter/vstsautoreviewer/pkg/config"
+	"github.com/samkreter/vstsautoreviewer/pkg/utils"
 )
 
 var (
-	config  Config
+	conf    *config.Config
 	inFile  string
 	aliases string
 	outFile string
 )
 
-// Config holds the configuration from the config file
-type Config struct {
-	Token          string `json:"token"`
-	Username       string `json:"username"`
-	APIVersion     string `json:"apiVersion"`
-	RepositoryName string `json:"repositoryName"`
-	Project        string `json:"project"`
-	Instance       string `json:"instance"`
-}
-
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
-	configFilePath, ok := os.LookupEnv("CONFIG_PATH")
-	if !ok {
-		log.Fatal("CONFIG_PATH not set")
-	}
-
-	configFile, err := os.Open(configFilePath)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer configFile.Close()
-
-	if err := json.NewDecoder(configFile).Decode(&config); err != nil {
-		log.Fatal(err)
-	}
 }
 
 func main() {
@@ -60,10 +33,21 @@ func main() {
 	flag.StringVar(&aliases, "a", "", "comma seperated list of aliases to convert (shorthand)")
 	flag.StringVar(&outFile, "outFile", "", "filepath to output the generated reviewers file to.")
 	flag.StringVar(&outFile, "o", "", "filepath to output the generated reviewers file to (shorthand).")
+	configFilePathPtr := flag.String("config-file", "", "filepath of the configuration file.")
 	flag.Parse()
 
 	if inFile == "" && aliases == "" {
 		log.Fatal("Must provide either --aliases or --inputFile")
+	}
+
+	if *configFilePathPtr == "" {
+		log.Fatal("Must suply a config location with --config-file")
+	}
+
+	var err error
+	conf, err = config.LoadConfig(*configFilePathPtr)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	aliasMap := make(map[string]*Reviewer)
@@ -78,12 +62,9 @@ func main() {
 	}
 
 	vstsConfig := &vsts.Config{
-		Token:          config.Token,
-		Username:       config.Username,
-		APIVersion:     config.APIVersion,
-		RepositoryName: config.RepositoryName,
-		Project:        config.Project,
-		Instance:       config.Instance,
+		Token:      conf.Token,
+		Username:   conf.Username,
+		APIVersion: "5.0",
 	}
 
 	vstsClient, err := vsts.NewClient(vstsConfig)
@@ -91,25 +72,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	getOpts := &vstsObj.GetPullRequestsOpts{
-		SearchCriteriaStatus: optional.NewString("all"),
-		Top:                  optional.NewInt32(1000),
-	}
+	for alias := range aliasMap {
+		devOpsIdentity, err := utils.GetDevOpsIdentity("sakreter", vstsClient.RestClient)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	pullRequests, err := vstsClient.GetPullRequests(getOpts)
-	if err != nil {
-		log.Fatalf("get pull requests error: %v", err)
-	}
-
-	for _, pullRequest := range pullRequests {
-		alias := getAliasFromEmail(pullRequest.CreatedBy.UniqueName)
-
-		if _, ok := aliasMap[alias]; ok {
-			aliasMap[alias] = &Reviewer{
-				UniqueName: pullRequest.CreatedBy.UniqueName,
-				Alias:      alias,
-				ID:         pullRequest.CreatedBy.ID,
-			}
+		aliasMap[alias] = &Reviewer{
+			UniqueName: devOpsIdentity.Properties["Mail"].Value,
+			Alias:      alias,
+			ID:         devOpsIdentity.ID,
 		}
 	}
 
