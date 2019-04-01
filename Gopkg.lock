@@ -45,15 +45,15 @@
   version = "v0.8.1"
 
 [[projects]]
-  digest = "1:746a75fc1eb6eb84c0e66f2f306d11f8a3890ace986f22ceaff1d52a090f4c82"
+  digest = "1:f48869c7afecec43bc786bd5f724235f57bd44e98b2cc668cb82ff63ceb7fff6"
   name = "github.com/samkreter/vsts-goclient"
   packages = [
     "api/git",
     "client",
   ]
   pruneopts = "UT"
-  revision = "b8c02dad553608d2dd94c5e1a5258e240cc90dc2"
-  version = "v0.0.2"
+  revision = "3064cd22835fd52c091d76c358a49174b7c50fed"
+  version = "v0.0.3"
 
 [[projects]]
   branch = "master"
@@ -97,7 +97,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/antihax/optional",
     "github.com/nlopes/slack",
     "github.com/samkreter/vsts-goclient/api/git",
     "github.com/samkreter/vsts-goclient/client",
