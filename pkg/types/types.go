@@ -4,10 +4,34 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"time"
+
+	"github.com/globalsign/mgo/bson"
 )
 
+// Repository holds the information for a repository
+type Repository struct {
+	ID             bson.ObjectId `json:"_id,omitempty" bson:"_id,omitempty"`
+	Created        *time.Time    `json:"_created,omitempty" bson:"_created,omitempty"`
+	Updated        *time.Time    `json:"_updated,omitempty" bson:"_updated,omitempty"`
+	Name           string
+	ProjectName    string
+	ReviewerGroups ReviewerGroups
+	CurrentPos     map[string]int
+	Enabled        bool
+}
+
+// BaseGroup holds the base groups to be added or removed from a repo
+type BaseGroup struct {
+	ID             bson.ObjectId `json:"_id,omitempty" bson:"_id,omitempty"`
+	Created        *time.Time    `json:"_created,omitempty" bson:"_created,omitempty"`
+	Updated        *time.Time    `json:"_updated,omitempty" bson:"_updated,omitempty"`
+	Name           string
+	ReviewerGroups ReviewerGroups
+}
+
 // ReviewerGroups is a list of type ReviewerGroup
-type ReviewerGroups []ReviewerGroup
+type ReviewerGroups map[string]*ReviewerGroup
 
 // ReviewerPositions holds the current position information for the reviewers
 type ReviewerPositions map[string]int
@@ -62,11 +86,11 @@ func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) 
 	requiredReviewers := make([]Reviewer, 0, len(*rg)/2)
 	optionalReviewers := make([]Reviewer, 0, len(*rg)/2)
 
-	for index := range *rg {
-		if (*rg)[index].Required == true {
-			requiredReviewers = append(requiredReviewers, getNextReviewer(&(*rg)[index], pullRequestCreatorID))
+	for _, reviewerGroup := range *rg {
+		if reviewerGroup.Required == true {
+			requiredReviewers = append(requiredReviewers, getNextReviewer(reviewerGroup, pullRequestCreatorID))
 		} else {
-			optionalReviewers = append(optionalReviewers, getNextReviewer(&(*rg)[index], pullRequestCreatorID))
+			optionalReviewers = append(optionalReviewers, getNextReviewer(reviewerGroup, pullRequestCreatorID))
 		}
 	}
 
