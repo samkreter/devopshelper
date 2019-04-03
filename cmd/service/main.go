@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samkreter/vstsautoreviewer/pkg/server"
 	"github.com/samkreter/vstsautoreviewer/pkg/store"
 	"github.com/samkreter/vstsautoreviewer/pkg/types"
 
@@ -31,12 +32,14 @@ var (
 	configFilePath string
 	vstsToken      string
 	vstsUsername   string
+	serverAddr     string
 	conf           = &config.Config{}
 	mongoOptions   = &store.MongoStoreOptions{}
 )
 
 func main() {
 	flag.StringVar(&configFilePath, "config-file", "", "filepath to the configuration file.")
+	flag.StringVar(&serverAddr, "addr", ":8080", "the address for the api server to listen on.")
 
 	flag.StringVar(&conf.Token, "vsts-token", "", "vsts personal access token")
 	flag.StringVar(&conf.Username, "vsts-username", "", "vsts username")
@@ -75,6 +78,14 @@ func main() {
 			}
 		}
 	}()
+
+	s, err := server.NewServer(serverAddr, repoStore)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Run the apiserver
+	s.Run()
 }
 
 func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf *config.Config) error {

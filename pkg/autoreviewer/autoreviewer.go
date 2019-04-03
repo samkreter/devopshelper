@@ -1,11 +1,8 @@
 package autoreviewer
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 	"time"
 
@@ -19,7 +16,7 @@ type Filter func(vstsObj.GitPullRequest) bool
 
 // ReviwerTrigger is called with the reviewers that have been selected. Allows for adding custom events
 //  for each reviewer that is added to the PR. Ex: slack notification.
-type ReviwerTrigger func([]types.Reviewer, string) error
+type ReviwerTrigger func([]*types.Reviewer, string) error
 
 // AutoReviewer automaticly adds reviewers to a vsts pull request
 type AutoReviewer struct {
@@ -152,7 +149,7 @@ func (a *AutoReviewer) ContainsReviewBalancerComment(pullRequestID int32) bool {
 }
 
 // AddReviewers adds the passing in reviewers to the pull requests for the passed in review.
-func (a *AutoReviewer) AddReviewers(pullRequestID int32, required, optional []types.Reviewer) error {
+func (a *AutoReviewer) AddReviewers(pullRequestID int32, required, optional []*types.Reviewer) error {
 	for _, reviewer := range append(required, optional...) {
 		identity := vstsObj.IdentityRefWithVote{
 			ID: reviewer.ID,
@@ -176,46 +173,9 @@ func getPullRequestURL(instance, project, repository string, pullRequestID int32
 		pullRequestID)
 }
 
-func loadReviewerGroups(reviewerFile, statusFile string) (*types.ReviewerGroups, error) {
-	rawReviewerData, err := ioutil.ReadFile(reviewerFile)
-	if err != nil {
-		return nil, fmt.Errorf("Could not load %s", reviewerFile)
-	}
-
-	var reviewerGroups types.ReviewerGroups
-	err = json.Unmarshal(rawReviewerData, &reviewerGroups)
-	if err != nil {
-		return nil, err
-	}
-
-	reviewerPoses := types.ReviewerPositions{}
-	if _, err := os.Stat(statusFile); os.IsNotExist(err) {
-		// Create the current pos file if it doesn't exist
-		reviewerGroups.SavePositions(statusFile)
-	}
-
-	rawPosData, err := ioutil.ReadFile(statusFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read status file err: '%v'", err)
-	}
-
-	err = json.Unmarshal(rawPosData, &reviewerPoses)
-	if err != nil {
-		return nil, err
-	}
-
-	for index, reviewerGroup := range reviewerGroups {
-		if pos, ok := reviewerPoses[reviewerGroup.Group]; ok {
-			reviewerGroups[index].CurrentPos = pos
-		}
-	}
-
-	return &reviewerGroups, nil
-}
-
 // GetReviewersAlias gets all names for the set of passed in reviewers
 // return: string slice of the aliases
-func GetReviewersAlias(reviewers []types.Reviewer) []string {
+func GetReviewersAlias(reviewers []*types.Reviewer) []string {
 	aliases := make([]string, len(reviewers))
 
 	for index, reviewer := range reviewers {

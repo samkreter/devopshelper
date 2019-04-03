@@ -65,6 +65,14 @@ func (ms *MongoStore) Close() {
 
 // NewMongoStore creates a new mongo store
 func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
+	if o.DBName == "" {
+		return nil, errors.New("missing Mongo DBName")
+	}
+
+	if o.MongoURI == "" {
+		return nil, errors.New("missing Mongo connection string")
+	}
+
 	var session *mgo.Session
 	var err error
 	if o.UseSSL {

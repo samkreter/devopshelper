@@ -122,9 +122,9 @@ func (s *Server) handleAddReviewerToRepository(w http.ResponseWriter, req *http.
 		return
 	}
 
-	reviewer, err := getReviewerFromBody(req)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to parse reviewer body: '%v'", err), http.StatusBadRequest)
+	reviewerAlias := vars["reviewerAlias"]
+	if reviewGroupName == "" {
+		http.Error(w, "reviewGroup missing from request", http.StatusBadRequest)
 		return
 	}
 
