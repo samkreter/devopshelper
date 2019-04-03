@@ -69,7 +69,7 @@ func main() {
 
 	go func() {
 		for range time.NewTicker(time.Minute * time.Duration(*reviewIntervalMin)).C {
-			err = ProcessReviewers(ctx, repoStore, conf)
+			err = processReviewers(ctx, repoStore, conf)
 			if err != nil {
 				log.Println("ERROR: ", err)
 			}
@@ -77,7 +77,7 @@ func main() {
 	}()
 }
 
-func ProcessReviewers(ctx context.Context, repoStore store.RepositoryStore, conf *config.Config) error {
+func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf *config.Config) error {
 	repos, err := repoStore.GetAllRepositories(ctx)
 	if err != nil {
 		return err

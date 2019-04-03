@@ -38,9 +38,9 @@ type ReviewerPositions map[string]int
 
 // ReviewerGroup holds the reviwers and metadata for a review group.
 type ReviewerGroup struct {
-	Group      string     `json:"group"`
-	Required   bool       `json:"required"`
-	Reviewers  []Reviewer `json:"reviewers"`
+	Group      string      `json:"group"`
+	Required   bool        `json:"required"`
+	Reviewers  []*Reviewer `json:"reviewers"`
 	CurrentPos int
 }
 
@@ -71,7 +71,7 @@ func (rg *ReviewerGroups) SavePositions(statusFile string) error {
 	return nil
 }
 
-func (g *ReviewerGroup) getCurrentReviewer() Reviewer {
+func (g *ReviewerGroup) getCurrentReviewer() *Reviewer {
 	return g.Reviewers[g.CurrentPos]
 }
 
@@ -82,9 +82,9 @@ func (g *ReviewerGroup) incPos() {
 // GetReviewers gets the required and optional reviewers for a review
 // review: the review summary
 // return: returns a slice of require reviewers and a slice of optional reviewers
-func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) ([]Reviewer, []Reviewer, error) {
-	requiredReviewers := make([]Reviewer, 0, len(*rg)/2)
-	optionalReviewers := make([]Reviewer, 0, len(*rg)/2)
+func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) ([]*Reviewer, []*Reviewer, error) {
+	requiredReviewers := make([]*Reviewer, 0, len(*rg)/2)
+	optionalReviewers := make([]*Reviewer, 0, len(*rg)/2)
 
 	for _, reviewerGroup := range *rg {
 		if reviewerGroup.Required == true {
@@ -101,7 +101,7 @@ func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) 
 	return requiredReviewers, optionalReviewers, nil
 }
 
-func getNextReviewer(group *ReviewerGroup, pullRequestCreatorID string) Reviewer {
+func getNextReviewer(group *ReviewerGroup, pullRequestCreatorID string) *Reviewer {
 	defer group.incPos()
 
 	for len(group.Reviewers) > 1 && group.getCurrentReviewer().ID == pullRequestCreatorID {
