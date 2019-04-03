@@ -27,7 +27,7 @@ type AutoReviewer struct {
 	filters          []Filter
 	reviewerTriggers []ReviwerTrigger
 	vstsClient       *vsts.Client
-	reviewerGroups   *types.ReviewerGroups
+	reviewerGroups   types.ReviewerGroups
 	reviewerFile     string
 	statusFile       string
 	botMaker         string
@@ -41,20 +41,13 @@ type ReviewerInfo struct {
 }
 
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(vstsClient *vsts.Client, botMaker, reviewerFile, statusFile string, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
-	reviewerGroups, err := loadReviewerGroups(reviewerFile, statusFile)
-	if err != nil {
-		return nil, err
-	}
-
+func NewAutoReviewer(vstsClient *vsts.Client, botMaker string, reviewerGroups types.ReviewerGroups, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
 	return &AutoReviewer{
 		Repository:       vstsClient.Repo,
 		vstsClient:       vstsClient,
 		filters:          filters,
 		reviewerTriggers: rTriggers,
 		reviewerGroups:   reviewerGroups,
-		reviewerFile:     reviewerFile,
-		statusFile:       statusFile,
 		botMaker:         botMaker,
 	}, nil
 }

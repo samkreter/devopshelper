@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/samkreter/vstsautoreviewer/pkg/store"
+	"github.com/samkreter/vstsautoreviewer/pkg/types"
 
 	"github.com/samkreter/vstsautoreviewer/pkg/autoreviewer"
 	"github.com/samkreter/vstsautoreviewer/pkg/config"
@@ -17,24 +22,72 @@ func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 }
 
+const (
+	defaultVSTSAPIVersion      = "5.0"
+	defaultReviewerIntervalMin = 5
+)
+
 var (
 	configFilePath string
+	vstsToken      string
+	vstsUsername   string
+	conf           = &config.Config{}
+	mongoOptions   = &store.MongoStoreOptions{}
 )
 
 func main() {
 	flag.StringVar(&configFilePath, "config-file", "", "filepath to the configuration file.")
+
+	flag.StringVar(&conf.Token, "vsts-token", "", "vsts personal access token")
+	flag.StringVar(&conf.Username, "vsts-username", "", "vsts username")
+
+	flag.StringVar(&mongoOptions.MongoURI, "mongo-uri", "", "connection string for the mongo database")
+	flag.StringVar(&mongoOptions.DBName, "mongo-dbname", "reviewerBot", "the mongo database to access")
+	flag.BoolVar(&mongoOptions.UseSSL, "mongo-ssl", false, "use ssl when accessing mongo database")
+
+	flag.StringVar(&conf.BotMaker, "botmaker-id", "b03f5f7f11d50a3a", "identifier for the bot's message")
+	flag.StringVar(&conf.Instance, "vsts-instance", "msazure.visualstudio.com", "vsts instance")
+	flag.StringVar(&conf.APIVersion, "vsts-apiversion", defaultVSTSAPIVersion, "vsts instance")
+
+	reviewIntervalMin := flag.Int("review-interval", defaultReviewerIntervalMin, "number of minutes to wait to reviwer")
 	flag.Parse()
 
-	conf, err := config.LoadConfig(configFilePath)
+	var err error
+	if configFilePath != "" {
+		conf, err = config.LoadConfig(configFilePath)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	ctx := context.Background()
+
+	repoStore, err := store.NewMongoStore(mongoOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	aReviewers := make([]*autoreviewer.AutoReviewer, 0, len(conf.RepositoryInfos))
-	for _, repoInfo := range conf.RepositoryInfos {
-		aReviewer, err := getAutoReviewers(repoInfo, conf)
+	go func() {
+		for range time.NewTicker(time.Minute * time.Duration(*reviewIntervalMin)).C {
+			err = ProcessReviewers(ctx, repoStore, conf)
+			if err != nil {
+				log.Println("ERROR: ", err)
+			}
+		}
+	}()
+}
+
+func ProcessReviewers(ctx context.Context, repoStore store.RepositoryStore, conf *config.Config) error {
+	repos, err := repoStore.GetAllRepositories(ctx)
+	if err != nil {
+		return err
+	}
+
+	aReviewers := make([]*autoreviewer.AutoReviewer, 0, len(repos))
+	for _, repo := range repos {
+		aReviewer, err := getAutoReviewers(repo, conf)
 		if err != nil {
-			log.Printf("ERROR: Failed to init reviewer for repo: %s/%s with err: %v", repoInfo.ProjectName, repoInfo.RepositoryName, err)
+			log.Printf("ERROR: Failed to init reviewer for repo: %s/%s with err: %v", repo.ProjectName, repo.Name, err)
 			continue
 		}
 
@@ -50,15 +103,16 @@ func main() {
 	}
 
 	log.Println("Finished Reviewing for all repositories")
+	return nil
 }
 
-func getAutoReviewers(repoInfo *config.RepositoryInfo, conf *config.Config) (*autoreviewer.AutoReviewer, error) {
+func getAutoReviewers(repo *types.Repository, conf *config.Config) (*autoreviewer.AutoReviewer, error) {
 	vstsConfig := &vsts.Config{
 		Token:          conf.Token,
 		Username:       conf.Username,
 		APIVersion:     conf.APIVersion,
-		RepositoryName: repoInfo.RepositoryName,
-		Project:        repoInfo.ProjectName,
+		RepositoryName: repo.Name,
+		Project:        repo.ProjectName,
 		Instance:       conf.Instance,
 	}
 
@@ -85,7 +139,7 @@ func getAutoReviewers(repoInfo *config.RepositoryInfo, conf *config.Config) (*au
 		}
 	}
 
-	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, conf.BotMaker, repoInfo.ReviewerFile, repoInfo.StatusFile, filters, reviewerTriggers)
+	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, conf.BotMaker, repo.ReviewerGroups, filters, reviewerTriggers)
 	if err != nil {
 		return nil, err
 	}
