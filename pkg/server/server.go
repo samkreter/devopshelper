@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/samkreter/go-core/httputil"
 	"github.com/samkreter/go-core/log"
+	vsts "github.com/samkreter/vsts-goclient/client"
 	"github.com/samkreter/vstsautoreviewer/pkg/store"
 )
 
@@ -17,6 +18,7 @@ const (
 // Server holds configuration for the server
 type Server struct {
 	Addr       string
+	vstsClient *vsts.Client
 	httpClient *http.Client
 	RepoStore  store.RepositoryStore
 }

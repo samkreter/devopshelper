@@ -3,25 +3,20 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/samkreter/vstsautoreviewer/pkg/autoreviewer"
+	"github.com/samkreter/vstsautoreviewer/pkg/config"
 	"github.com/samkreter/vstsautoreviewer/pkg/server"
 	"github.com/samkreter/vstsautoreviewer/pkg/store"
 	"github.com/samkreter/vstsautoreviewer/pkg/types"
 
-	"github.com/samkreter/vstsautoreviewer/pkg/autoreviewer"
-	"github.com/samkreter/vstsautoreviewer/pkg/config"
-
+	"github.com/samkreter/go-core/log"
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
 )
-
-func init() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-}
 
 const (
 	defaultVSTSAPIVersion      = "5.0"
@@ -33,6 +28,7 @@ var (
 	vstsToken      string
 	vstsUsername   string
 	serverAddr     string
+	logLvl         string
 	conf           = &config.Config{}
 	mongoOptions   = &store.MongoStoreOptions{}
 )
@@ -40,6 +36,7 @@ var (
 func main() {
 	flag.StringVar(&configFilePath, "config-file", "", "filepath to the configuration file.")
 	flag.StringVar(&serverAddr, "addr", ":8080", "the address for the api server to listen on.")
+	flag.StringVar(&logLvl, "log-level", "info", "the log level for the application")
 
 	flag.StringVar(&conf.Token, "vsts-token", "", "vsts personal access token")
 	flag.StringVar(&conf.Username, "vsts-username", "", "vsts username")
@@ -55,11 +52,15 @@ func main() {
 	reviewIntervalMin := flag.Int("review-interval", defaultReviewerIntervalMin, "number of minutes to wait to reviwer")
 	flag.Parse()
 
+	if err := log.SetLogLevel(logLvl); err != nil {
+		log.G(context.TODO()).Errorf("failed to set log level to : '%s'", logLvl)
+	}
+
 	var err error
 	if configFilePath != "" {
 		conf, err = config.LoadConfig(configFilePath)
 		if err != nil {
-			log.Fatal(err)
+			log.G(context.TODO()).Fatal(err)
 		}
 	}
 
@@ -67,21 +68,22 @@ func main() {
 
 	repoStore, err := store.NewMongoStore(mongoOptions)
 	if err != nil {
-		log.Fatal(err)
+		log.G(context.TODO()).Fatal(err)
 	}
 
 	go func() {
+		log.G(context.TODO()).Info("Starting Reviewer....")
 		for range time.NewTicker(time.Minute * time.Duration(*reviewIntervalMin)).C {
 			err = processReviewers(ctx, repoStore, conf)
 			if err != nil {
-				log.Println("ERROR: ", err)
+				log.G(context.TODO()).Error(err)
 			}
 		}
 	}()
 
 	s, err := server.NewServer(serverAddr, repoStore)
 	if err != nil {
-		log.Fatal(err)
+		log.G(context.TODO()).Fatal(err)
 	}
 
 	// Run the apiserver
@@ -98,7 +100,7 @@ func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf
 	for _, repo := range repos {
 		aReviewer, err := getAutoReviewers(repo, conf)
 		if err != nil {
-			log.Printf("ERROR: Failed to init reviewer for repo: %s/%s with err: %v", repo.ProjectName, repo.Name, err)
+			log.G(context.TODO()).Errorf("failed to init reviewer for repo: %s/%s with err: %v", repo.ProjectName, repo.Name, err)
 			continue
 		}
 
@@ -106,14 +108,14 @@ func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf
 	}
 
 	for _, aReviewer := range aReviewers {
-		log.Printf("Starting Reviewer for repo: %s\n", aReviewer.Repository)
+		log.G(context.TODO()).Infof("Starting Reviewer for repo: %s\n", aReviewer.Repository)
 		if err := aReviewer.Run(); err != nil {
-			log.Printf("Failed to balance repo: %s with err: %v\n", aReviewer.Repository, err)
+			log.G(context.TODO()).Errorf("Failed to balance repo: %s with err: %v\n", aReviewer.Repository, err)
 		}
-		log.Printf("Finished Balancing Cycle for repo: %s\n", aReviewer.Repository)
+		log.G(context.TODO()).Infof("Finished Balancing Cycle for repo: %s\n", aReviewer.Repository)
 	}
 
-	log.Println("Finished Reviewing for all repositories")
+	log.G(context.TODO()).Info("Finished Reviewing for all repositories")
 	return nil
 }
 
@@ -143,10 +145,10 @@ func getAutoReviewers(repo *types.Repository, conf *config.Config) (*autoreviewe
 	if ok {
 		slackTrigger, err := autoreviewer.NewSlackTrigger(slackTriggerPath)
 		if err != nil {
-			log.Printf("ERROR: Failed to create slack trigger with error: %v", err)
+			log.G(context.TODO()).Errorf("ERROR: Failed to create slack trigger with error: %v", err)
 		} else {
 			reviewerTriggers = append(reviewerTriggers, slackTrigger)
-			log.Println("Adding Slack Reviewer Trigger...")
+			log.G(context.TODO()).Info("Adding Slack Reviewer Trigger...")
 		}
 	}
 

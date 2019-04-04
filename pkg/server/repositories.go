@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/samkreter/vstsautoreviewer/pkg/store"
 	"github.com/samkreter/vstsautoreviewer/pkg/types"
+	"github.com/samkreter/vstsautoreviewer/pkg/utils"
 )
 
 // Reviewers
@@ -141,6 +142,11 @@ func (s *Server) handleAddReviewerToRepository(w http.ResponseWriter, req *http.
 	if !ok {
 		http.Error(w, fmt.Sprintf("reviewer group '%s' not found", reviewGroupName), http.StatusBadRequest)
 		return
+	}
+
+	reviewer, err := utils.GetReviwerFromAlias(reviewerAlias, s.vstsClient.RestClient)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to retrive vsts id with error: '%v'", err), http.StatusInternalServerError)
 	}
 
 	reviewerGroup.Reviewers = append(reviewerGroup.Reviewers, reviewer)

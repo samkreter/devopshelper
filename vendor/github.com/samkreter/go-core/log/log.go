@@ -67,6 +67,17 @@ func ParseLevel(lvl string) (logrus.Level, error) {
 	return logrus.ParseLevel(lvl)
 }
 
+// SetLogLevel sets the logger level
+func SetLogLevel(lvl string) error {
+	logrusLvl, err := ParseLevel(lvl)
+	if err != nil {
+		return err
+	}
+
+	logrus.SetLevel(logrusLvl)
+	return nil
+}
+
 // WithLogger returns a new context with the provided logger. Use in
 // combination with logger.WithField(s) for great effect.
 func WithLogger(ctx context.Context, logger *logrus.Entry) context.Context {
