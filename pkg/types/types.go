@@ -11,23 +11,23 @@ import (
 
 // Repository holds the information for a repository
 type Repository struct {
-	ID             bson.ObjectId `json:"_id,omitempty" bson:"_id,omitempty"`
-	Created        *time.Time    `json:"_created,omitempty" bson:"_created,omitempty"`
-	Updated        *time.Time    `json:"_updated,omitempty" bson:"_updated,omitempty"`
-	Name           string
-	ProjectName    string
-	ReviewerGroups ReviewerGroups
-	CurrentPos     map[string]int
-	Enabled        bool
+	ID             bson.ObjectId  `json:"id,omitempty" bson:"_id,omitempty"`
+	Created        *time.Time     `json:"created,omitempty" bson:"_created,omitempty"`
+	Updated        *time.Time     `json:"updated,omitempty" bson:"_updated,omitempty"`
+	Name           string         `json:"name"`
+	ProjectName    string         `json:"projectName"`
+	ReviewerGroups ReviewerGroups `json:"reviewerGroups"`
+	CurrentPos     map[string]int `json:"-"`
+	Enabled        bool           `json:"enabled"`
 }
 
 // BaseGroup holds the base groups to be added or removed from a repo
 type BaseGroup struct {
-	ID             bson.ObjectId `json:"_id,omitempty" bson:"_id,omitempty"`
-	Created        *time.Time    `json:"_created,omitempty" bson:"_created,omitempty"`
-	Updated        *time.Time    `json:"_updated,omitempty" bson:"_updated,omitempty"`
-	Name           string
-	ReviewerGroups ReviewerGroups
+	ID             bson.ObjectId  `json:"_id,omitempty" bson:"_id,omitempty"`
+	Created        *time.Time     `json:"_created,omitempty" bson:"_created,omitempty"`
+	Updated        *time.Time     `json:"_updated,omitempty" bson:"_updated,omitempty"`
+	Name           string         `json:"name"`
+	ReviewerGroups ReviewerGroups `json:"reviewerGroups"`
 }
 
 // ReviewerGroups is a list of type ReviewerGroup

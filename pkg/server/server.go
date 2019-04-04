@@ -50,21 +50,23 @@ func (s *Server) Run() {
 
 	// Repos
 	router.HandleFunc("/api/repositories", s.handleGetRepositories).Methods("GET")
-	router.HandleFunc("/api/repositories/{repositoryID}", s.handleGetRepository).Methods("GET")
-	router.HandleFunc("/api/repositories/{repositoryID}", s.handlePutRepository).Methods("PUT")
-	router.HandleFunc("/api/repositories/{repositoryID}", s.handleDeleteRepository).Methods("DELETE")
+	router.HandleFunc("/api/repositories", s.handlePostRepository).Methods("POST")
+	router.HandleFunc("/api/projects/{project}/repositories", s.handleGetRepositoryPerProject).Methods("GET")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.handleGetRepository).Methods("GET")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.handlePutRepository).Methods("PUT")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.handleDeleteRepository).Methods("DELETE")
 
 	// Reviewers
-	router.HandleFunc("/api/repositories/{repositoryID}/reviewGroups/{reviewGroup}/reviewers", s.handleGetReviewerGroupToRepository).Methods("GET")
-	router.HandleFunc("/api/repositories/{repositoryID}/reviewGroups/{reviewGroup}/reviewers", s.handleAddReviewerToRepository).Methods("POST")
-	router.HandleFunc("/api/repositories/{repositoryID}/reviewGroups/{reviewGroup}/reviewers/{reviewerAlias}", s.handleDeleteReviewerToRepository).Methods("DELETE")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers", s.handleGetReviewerGroupToRepository).Methods("GET")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers", s.handleAddReviewerToRepository).Methods("POST")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers/{reviewerAlias}", s.handleDeleteReviewerToRepository).Methods("DELETE")
 
 	// Repos Base Groups
-	router.HandleFunc("/api/repositories/{repositoryID}/basegroup/{basegroupName}", s.handleAddBaseGroupToRepository).Methods("PUT")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/basegroup/{basegroupName}", s.handleAddBaseGroupToRepository).Methods("PUT")
 
 	// Enable
-	router.HandleFunc("/api/repositories/{repositoryID}/enable", s.handleEnableRepository).Methods("POST")
-	router.HandleFunc("/api/repositories/{repositoryID}/disable", s.handleDisableRepository).Methods("POST")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/enable", s.handleEnableRepository).Methods("POST")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/disable", s.handleDisableRepository).Methods("POST")
 
 	tracingRouter := httputil.SetUpHandler(router, &httputil.HandlerConfig{
 		CorrelationEnabled: true,
