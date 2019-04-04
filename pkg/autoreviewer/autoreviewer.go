@@ -1,16 +1,14 @@
 package autoreviewer
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 	"time"
 
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
+	"github.com/samkreter/vstsautoreviewer/pkg/types"
 )
 
 // Filter is a function returns true if a pull request should be filtered out.
@@ -18,7 +16,7 @@ type Filter func(vstsObj.GitPullRequest) bool
 
 // ReviwerTrigger is called with the reviewers that have been selected. Allows for adding custom events
 //  for each reviewer that is added to the PR. Ex: slack notification.
-type ReviwerTrigger func([]Reviewer, string) error
+type ReviwerTrigger func([]*types.Reviewer, string) error
 
 // AutoReviewer automaticly adds reviewers to a vsts pull request
 type AutoReviewer struct {
@@ -26,7 +24,7 @@ type AutoReviewer struct {
 	filters          []Filter
 	reviewerTriggers []ReviwerTrigger
 	vstsClient       *vsts.Client
-	reviewerGroups   *ReviewerGroups
+	reviewerGroups   types.ReviewerGroups
 	reviewerFile     string
 	statusFile       string
 	botMaker         string
@@ -36,24 +34,17 @@ type AutoReviewer struct {
 type ReviewerInfo struct {
 	File           string   `json:"file"`
 	ActivePaths    []string `json:"activePaths"`
-	reviewerGroups ReviewerGroups
+	reviewerGroups types.ReviewerGroups
 }
 
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(vstsClient *vsts.Client, botMaker, reviewerFile, statusFile string, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
-	reviewerGroups, err := loadReviewerGroups(reviewerFile, statusFile)
-	if err != nil {
-		return nil, err
-	}
-
+func NewAutoReviewer(vstsClient *vsts.Client, botMaker string, reviewerGroups types.ReviewerGroups, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
 	return &AutoReviewer{
 		Repository:       vstsClient.Repo,
 		vstsClient:       vstsClient,
 		filters:          filters,
 		reviewerTriggers: rTriggers,
 		reviewerGroups:   reviewerGroups,
-		reviewerFile:     reviewerFile,
-		statusFile:       statusFile,
 		botMaker:         botMaker,
 	}, nil
 }
@@ -158,7 +149,7 @@ func (a *AutoReviewer) ContainsReviewBalancerComment(pullRequestID int32) bool {
 }
 
 // AddReviewers adds the passing in reviewers to the pull requests for the passed in review.
-func (a *AutoReviewer) AddReviewers(pullRequestID int32, required, optional []Reviewer) error {
+func (a *AutoReviewer) AddReviewers(pullRequestID int32, required, optional []*types.Reviewer) error {
 	for _, reviewer := range append(required, optional...) {
 		identity := vstsObj.IdentityRefWithVote{
 			ID: reviewer.ID,
@@ -182,131 +173,13 @@ func getPullRequestURL(instance, project, repository string, pullRequestID int32
 		pullRequestID)
 }
 
-// ReviewerGroups is a list of type ReviewerGroup
-type ReviewerGroups []ReviewerGroup
-
-// ReviewerPositions holds the current position information for the reviewers
-type ReviewerPositions map[string]int
-
-// ReviewerGroup holds the reviwers and metadata for a review group.
-type ReviewerGroup struct {
-	Group      string     `json:"group"`
-	Required   bool       `json:"required"`
-	Reviewers  []Reviewer `json:"reviewers"`
-	CurrentPos int
-}
-
-// Reviewer is a vsts revier object
-type Reviewer struct {
-	UniqueName string `json:"uniqueName"`
-	Alias      string `json:"alias"`
-	ID         string `json:"id"`
-}
-
-func loadReviewerGroups(reviewerFile, statusFile string) (*ReviewerGroups, error) {
-	rawReviewerData, err := ioutil.ReadFile(reviewerFile)
-	if err != nil {
-		return nil, fmt.Errorf("Could not load %s", reviewerFile)
-	}
-
-	var reviewerGroups ReviewerGroups
-	err = json.Unmarshal(rawReviewerData, &reviewerGroups)
-	if err != nil {
-		return nil, err
-	}
-
-	reviewerPoses := ReviewerPositions{}
-	if _, err := os.Stat(statusFile); os.IsNotExist(err) {
-		// Create the current pos file if it doesn't exist
-		reviewerGroups.savePositions(statusFile)
-	}
-
-	rawPosData, err := ioutil.ReadFile(statusFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read status file err: '%v'", err)
-	}
-
-	err = json.Unmarshal(rawPosData, &reviewerPoses)
-	if err != nil {
-		return nil, err
-	}
-
-	for index, reviewerGroup := range reviewerGroups {
-		if pos, ok := reviewerPoses[reviewerGroup.Group]; ok {
-			reviewerGroups[index].CurrentPos = pos
-		}
-	}
-
-	return &reviewerGroups, nil
-}
-
-func (rg *ReviewerGroups) savePositions(statusFile string) error {
-	reviewerPositions := make(ReviewerPositions)
-	for _, reviewerGroup := range *rg {
-		reviewerPositions[reviewerGroup.Group] = reviewerGroup.CurrentPos
-	}
-
-	data, err := json.Marshal(reviewerPositions)
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(statusFile, data, 0644); err != nil {
-		return err
-	}
-
-	log.Println("INFO: Saving position file.")
-	return nil
-}
-
-func (g *ReviewerGroup) getCurrentReviewer() Reviewer {
-	return g.Reviewers[g.CurrentPos]
-}
-
-func (g *ReviewerGroup) incPos() {
-	g.CurrentPos = (g.CurrentPos + 1) % len(g.Reviewers)
-}
-
 // GetReviewersAlias gets all names for the set of passed in reviewers
 // return: string slice of the aliases
-func GetReviewersAlias(reviewers []Reviewer) []string {
+func GetReviewersAlias(reviewers []*types.Reviewer) []string {
 	aliases := make([]string, len(reviewers))
 
 	for index, reviewer := range reviewers {
 		aliases[index] = reviewer.Alias
 	}
 	return aliases
-}
-
-// GetReviewers gets the required and optional reviewers for a review
-// review: the review summary
-// return: returns a slice of require reviewers and a slice of optional reviewers
-func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) ([]Reviewer, []Reviewer, error) {
-	requiredReviewers := make([]Reviewer, 0, len(*rg)/2)
-	optionalReviewers := make([]Reviewer, 0, len(*rg)/2)
-
-	for index := range *rg {
-		if (*rg)[index].Required == true {
-			requiredReviewers = append(requiredReviewers, getNextReviewer(&(*rg)[index], pullRequestCreatorID))
-		} else {
-			optionalReviewers = append(optionalReviewers, getNextReviewer(&(*rg)[index], pullRequestCreatorID))
-		}
-	}
-
-	if err := rg.savePositions(statusFile); err != nil {
-		return nil, nil, err
-	}
-
-	return requiredReviewers, optionalReviewers, nil
-}
-
-func getNextReviewer(group *ReviewerGroup, pullRequestCreatorID string) Reviewer {
-	defer group.incPos()
-
-	for len(group.Reviewers) > 1 && group.getCurrentReviewer().ID == pullRequestCreatorID {
-
-		group.incPos()
-	}
-
-	return group.getCurrentReviewer()
 }

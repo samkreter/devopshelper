@@ -1,12 +1,16 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
 
 	"github.com/samkreter/vstsautoreviewer/pkg/autoreviewer"
 	"github.com/samkreter/vstsautoreviewer/pkg/config"
+	"github.com/samkreter/vstsautoreviewer/pkg/types"
 
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
@@ -80,7 +84,12 @@ func getAutoReviewers(repoInfo *config.RepositoryInfo, conf *config.Config) (*au
 		}
 	}
 
-	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, conf.BotMaker, repoInfo.ReviewerFile, repoInfo.StatusFile, filters, reviewerTriggers)
+	reviewerGroups, err := loadReviewerGroups(repoInfo.ReviewerFile, repoInfo.StatusFile)
+	if err != nil {
+		return nil, err
+	}
+
+	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, conf.BotMaker, reviewerGroups, filters, reviewerTriggers)
 	if err != nil {
 		return nil, err
 	}
@@ -102,4 +111,41 @@ func filterMasterBranchOnly(pr vstsObj.GitPullRequest) bool {
 	}
 
 	return true
+}
+
+func loadReviewerGroups(reviewerFile, statusFile string) (types.ReviewerGroups, error) {
+	rawReviewerData, err := ioutil.ReadFile(reviewerFile)
+	if err != nil {
+		return nil, fmt.Errorf("Could not load %s", reviewerFile)
+	}
+
+	var reviewerGroups types.ReviewerGroups
+	err = json.Unmarshal(rawReviewerData, &reviewerGroups)
+	if err != nil {
+		return nil, err
+	}
+
+	reviewerPoses := types.ReviewerPositions{}
+	if _, err := os.Stat(statusFile); os.IsNotExist(err) {
+		// Create the current pos file if it doesn't exist
+		reviewerGroups.SavePositions(statusFile)
+	}
+
+	rawPosData, err := ioutil.ReadFile(statusFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read status file err: '%v'", err)
+	}
+
+	err = json.Unmarshal(rawPosData, &reviewerPoses)
+	if err != nil {
+		return nil, err
+	}
+
+	for index, reviewerGroup := range reviewerGroups {
+		if pos, ok := reviewerPoses[reviewerGroup.Group]; ok {
+			reviewerGroups[index].CurrentPos = pos
+		}
+	}
+
+	return reviewerGroups, nil
 }

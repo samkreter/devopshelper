@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+
+	"github.com/samkreter/vstsautoreviewer/pkg/types"
 )
 
 const (
@@ -43,6 +45,19 @@ const (
 
 type devOpsClient interface {
 	Do(method, url string, body io.Reader) ([]byte, error)
+}
+
+// GetReviwerFromAlias gets a reviewer from an alias
+func GetReviwerFromAlias(alias string, client devOpsClient) (*types.Reviewer, error) {
+	identity, err := GetDevOpsIdentity(alias, client)
+	if err != nil {
+		return nil, err
+	}
+
+	return &types.Reviewer{
+		Alias: alias,
+		ID:    identity.ID,
+	}, nil
 }
 
 // GetDevOpsIdentity returns the azure devops identity for a given alais

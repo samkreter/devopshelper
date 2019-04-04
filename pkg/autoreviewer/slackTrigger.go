@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/samkreter/vstsautoreviewer/pkg/triggers/slack"
+	"github.com/samkreter/vstsautoreviewer/pkg/types"
 )
 
 const (
@@ -30,7 +31,7 @@ func NewSlackTrigger(configPath string) (ReviwerTrigger, error) {
 
 	c := slack.NewClient(config.Token)
 
-	trigger := func(reviewers []Reviewer, pullRequestURL string) error {
+	trigger := func(reviewers []*types.Reviewer, pullRequestURL string) error {
 		slackUsers := make([]string, 0, len(reviewers))
 
 		for _, reviewer := range reviewers {
