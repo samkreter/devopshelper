@@ -52,38 +52,43 @@ func main() {
 	reviewIntervalMin := flag.Int("review-interval", defaultReviewerIntervalMin, "number of minutes to wait to reviwer")
 	flag.Parse()
 
+	ctx := context.Background()
+	logger := log.G(ctx)
+
 	if err := log.SetLogLevel(logLvl); err != nil {
-		log.G(context.TODO()).Errorf("failed to set log level to : '%s'", logLvl)
+		logger.Errorf("failed to set log level to : '%s'", logLvl)
 	}
 
 	var err error
 	if configFilePath != "" {
 		conf, err = config.LoadConfig(configFilePath)
 		if err != nil {
-			log.G(context.TODO()).Fatal(err)
+			logger.Fatal(err)
 		}
 	}
 
-	ctx := context.Background()
-
 	repoStore, err := store.NewMongoStore(mongoOptions)
 	if err != nil {
-		log.G(context.TODO()).Fatal(err)
+		logger.Fatal(err)
 	}
 
 	go func() {
-		log.G(context.TODO()).Info("Starting Reviewer....")
+		logger.Info("Starting Reviewer....")
+		err = processReviewers(ctx, repoStore, conf)
+		if err != nil {
+			logger.Error(err)
+		}
 		for range time.NewTicker(time.Minute * time.Duration(*reviewIntervalMin)).C {
 			err = processReviewers(ctx, repoStore, conf)
 			if err != nil {
-				log.G(context.TODO()).Error(err)
+				logger.Error(err)
 			}
 		}
 	}()
 
 	s, err := server.NewServer(serverAddr, repoStore)
 	if err != nil {
-		log.G(context.TODO()).Fatal(err)
+		logger.Fatal(err)
 	}
 
 	// Run the apiserver
@@ -91,6 +96,7 @@ func main() {
 }
 
 func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf *config.Config) error {
+	logger := log.G(ctx)
 	repos, err := repoStore.GetAllRepositories(ctx)
 	if err != nil {
 		return err
@@ -100,7 +106,7 @@ func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf
 	for _, repo := range repos {
 		aReviewer, err := getAutoReviewers(repo, conf)
 		if err != nil {
-			log.G(context.TODO()).Errorf("failed to init reviewer for repo: %s/%s with err: %v", repo.ProjectName, repo.Name, err)
+			logger.Errorf("failed to init reviewer for repo: %s/%s with err: %v", repo.ProjectName, repo.Name, err)
 			continue
 		}
 
@@ -108,14 +114,14 @@ func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf
 	}
 
 	for _, aReviewer := range aReviewers {
-		log.G(context.TODO()).Infof("Starting Reviewer for repo: %s\n", aReviewer.Repository)
+		logger.Infof("Starting Reviewer for repo: %s\n", aReviewer.Repository)
 		if err := aReviewer.Run(); err != nil {
-			log.G(context.TODO()).Errorf("Failed to balance repo: %s with err: %v\n", aReviewer.Repository, err)
+			logger.Errorf("Failed to balance repo: %s with err: %v\n", aReviewer.Repository, err)
 		}
-		log.G(context.TODO()).Infof("Finished Balancing Cycle for repo: %s\n", aReviewer.Repository)
+		logger.Infof("Finished Balancing Cycle for repo: %s\n", aReviewer.Repository)
 	}
 
-	log.G(context.TODO()).Info("Finished Reviewing for all repositories")
+	logger.Info("Finished Reviewing for all repositories")
 	return nil
 }
 
