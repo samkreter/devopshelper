@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -12,9 +13,14 @@ import (
 	"github.com/samkreter/vstsautoreviewer/pkg/store"
 )
 
+type contextKey string
+
 const (
+	userInfoContextKey = contextKey("userinfo")
+
 	defaultAddr = "localhost:8080"
-	GraphURI    = "https://graph.microsoft.com/v1.0/me"
+	// GraphURI uri to grab the currently logged in users identity
+	GraphURI = "https://graph.microsoft.com/v1.0/me"
 )
 
 // Server holds configuration for the server
@@ -70,7 +76,10 @@ func (s *Server) Run() {
 	router.HandleFunc("/api/projects/{project}/repositories/{repository}/enable", s.handleEnableRepository).Methods("POST")
 	router.HandleFunc("/api/projects/{project}/repositories/{repository}/disable", s.handleDisableRepository).Methods("POST")
 
-	tracingRouter := httputil.SetUpHandler(router, &httputil.HandlerConfig{
+	// Add authentication handler
+	authRouter := AuthMiddleware(router)
+
+	tracingRouter := httputil.SetUpHandler(authRouter, &httputil.HandlerConfig{
 		CorrelationEnabled: true,
 		LoggingEnabled:     true,
 		TracingEnabled:     true,
@@ -80,17 +89,49 @@ func (s *Server) Run() {
 	log.G(context.TODO()).Fatal(http.ListenAndServe(s.Addr, tracingRouter))
 }
 
-func authenticate(accessToken string) (*GraphUser, error) {
+// AuthMiddleware only allows users in the security group and adds the user into the request context
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		authHeader := req.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "no Authorization header found", http.StatusBadRequest)
+			return
+		}
+
+		ctx := req.Context()
+
+		logger := log.G(ctx)
+
+		user, err := getAuthenticatedUser(authHeader)
+		if err != nil {
+			logger.Errorf("failed to auth user with err: '%v'", err)
+			http.Error(w, "authentication was invalid", http.StatusUnauthorized)
+			return
+		}
+
+		ctx = context.WithValue(ctx, userInfoContextKey, user)
+
+		logger.Infof("using logged in user: '%s'", user.Mail)
+
+		next.ServeHTTP(w, req.WithContext(ctx))
+	})
+}
+
+func getAuthenticatedUser(authToken string) (*GraphUser, error) {
 	req, err := http.NewRequest("GET", GraphURI, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Authorization", "Bearer "+accessToken)
+	req.Header.Add("Authorization", authToken)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("graph returned non 200 status code: '%d'", resp.StatusCode)
 	}
 
 	defer resp.Body.Close()
