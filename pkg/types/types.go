@@ -19,6 +19,7 @@ type Repository struct {
 	ReviewerGroups ReviewerGroups `json:"reviewerGroups"`
 	CurrentPos     map[string]int `json:"-"`
 	Enabled        bool           `json:"enabled"`
+	Owners         []string       `json:"owners"`
 }
 
 // BaseGroup holds the base groups to be added or removed from a repo
