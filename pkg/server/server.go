@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -13,6 +14,7 @@ import (
 
 const (
 	defaultAddr = "localhost:8080"
+	GraphURI    = "https://graph.microsoft.com/v1.0/me"
 )
 
 // Server holds configuration for the server
@@ -76,4 +78,43 @@ func (s *Server) Run() {
 
 	log.G(context.TODO()).WithField("address: ", s.Addr).Info("Starting Frontend Server:")
 	log.G(context.TODO()).Fatal(http.ListenAndServe(s.Addr, tracingRouter))
+}
+
+func authenticate(accessToken string) (*GraphUser, error) {
+	req, err := http.NewRequest("GET", GraphURI, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	var user GraphUser
+	err = json.NewDecoder(resp.Body).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+type GraphUser struct {
+	OdataContext      string      `json:"@odata.context"`
+	BusinessPhones    []string    `json:"businessPhones"`
+	DisplayName       string      `json:"displayName"`
+	GivenName         string      `json:"givenName"`
+	JobTitle          string      `json:"jobTitle"`
+	Mail              string      `json:"mail"`
+	MobilePhone       interface{} `json:"mobilePhone"`
+	OfficeLocation    string      `json:"officeLocation"`
+	PreferredLanguage interface{} `json:"preferredLanguage"`
+	Surname           string      `json:"surname"`
+	UserPrincipalName string      `json:"userPrincipalName"`
+	ID                string      `json:"id"`
 }
