@@ -11,6 +11,7 @@ import (
 	"github.com/samkreter/go-core/log"
 	vsts "github.com/samkreter/vsts-goclient/client"
 	"github.com/samkreter/vstsautoreviewer/pkg/store"
+	"github.com/samkreter/vstsautoreviewer/pkg/types"
 )
 
 type contextKey string
@@ -18,7 +19,8 @@ type contextKey string
 const (
 	userInfoContextKey = contextKey("userinfo")
 
-	defaultAddr = "localhost:8080"
+	defaultAddr         = "localhost:8080"
+	currentUserLogField = "currentUser"
 	// GraphURI uri to grab the currently logged in users identity
 	GraphURI = "https://graph.microsoft.com/v1.0/me"
 )
@@ -26,6 +28,7 @@ const (
 // Server holds configuration for the server
 type Server struct {
 	Addr       string
+	Admins     []string
 	vstsClient *vsts.Client
 	httpClient *http.Client
 	RepoStore  store.RepositoryStore
@@ -51,30 +54,30 @@ func (s *Server) Run() {
 	router.Handle("/", http.FileServer(http.Dir("static")))
 
 	// Base Groups
-	router.HandleFunc("/api/basegroups", s.handleGetBaseGroups).Methods("GET")
-	router.HandleFunc("/api/basegroups/{baseGroupName}", s.handleGetBaseGroup).Methods("GET")
-	router.HandleFunc("/api/basegroups/{basegroupName}", s.handlePutBaseGroup).Methods("PUT")
-	router.HandleFunc("/api/basegroups/{basegroupName}", s.handleDeleteBaseGroup).Methods("DELETE")
+	router.HandleFunc("/api/basegroups", s.GetBaseGroups).Methods("GET")
+	router.HandleFunc("/api/basegroups/{baseGroupName}", s.GetBaseGroup).Methods("GET")
+	router.HandleFunc("/api/basegroups/{basegroupName}", s.PutBaseGroup).Methods("PUT")
+	router.HandleFunc("/api/basegroups/{basegroupName}", s.DeleteBaseGroup).Methods("DELETE")
 
 	// Repos
-	router.HandleFunc("/api/repositories", s.handleGetRepositories).Methods("GET")
-	router.HandleFunc("/api/repositories", s.handlePostRepository).Methods("POST")
-	router.HandleFunc("/api/projects/{project}/repositories", s.handleGetRepositoryPerProject).Methods("GET")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.handleGetRepository).Methods("GET")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.handlePutRepository).Methods("PUT")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.handleDeleteRepository).Methods("DELETE")
+	router.HandleFunc("/api/repositories", s.GetRepositories).Methods("GET")
+	router.HandleFunc("/api/repositories", s.PostRepository).Methods("POST")
+	router.HandleFunc("/api/projects/{project}/repositories", s.GetRepositoryPerProject).Methods("GET")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.GetRepository).Methods("GET")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.PutRepository).Methods("PUT")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.DeleteRepository).Methods("DELETE")
 
 	// Reviewers
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers", s.handleGetReviewerGroupToRepository).Methods("GET")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers", s.handleAddReviewerToRepository).Methods("POST")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers/{reviewerAlias}", s.handleDeleteReviewerToRepository).Methods("DELETE")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers", s.GetReviewerGroupToRepository).Methods("GET")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers", s.AddReviewerToRepository).Methods("POST")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers/{reviewerAlias}", s.DeleteReviewerToRepository).Methods("DELETE")
 
 	// Repos Base Groups
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/basegroup/{basegroupName}", s.handleAddBaseGroupToRepository).Methods("PUT")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/basegroup/{basegroupName}", s.AddBaseGroupToRepository).Methods("PUT")
 
 	// Enable
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/enable", s.handleEnableRepository).Methods("POST")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/disable", s.handleDisableRepository).Methods("POST")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/enable", s.EnableRepository).Methods("POST")
+	router.HandleFunc("/api/projects/{project}/repositories/{repository}/disable", s.DisableRepository).Methods("POST")
 
 	// Add authentication handler
 	authRouter := AuthMiddleware(router)
@@ -111,13 +114,16 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		ctx = context.WithValue(ctx, userInfoContextKey, user)
 
+		// Add the current user to the log fields
+		ctx = log.WithLogger(ctx, logger.WithField(currentUserLogField, user.Mail))
+
 		logger.Infof("using logged in user: '%s'", user.Mail)
 
 		next.ServeHTTP(w, req.WithContext(ctx))
 	})
 }
 
-func getAuthenticatedUser(authToken string) (*GraphUser, error) {
+func getAuthenticatedUser(authToken string) (*types.GraphUser, error) {
 	req, err := http.NewRequest("GET", GraphURI, nil)
 	if err != nil {
 		return nil, err
@@ -136,26 +142,11 @@ func getAuthenticatedUser(authToken string) (*GraphUser, error) {
 
 	defer resp.Body.Close()
 
-	var user GraphUser
+	var user types.GraphUser
 	err = json.NewDecoder(resp.Body).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
 
 	return &user, nil
-}
-
-type GraphUser struct {
-	OdataContext      string      `json:"@odata.context"`
-	BusinessPhones    []string    `json:"businessPhones"`
-	DisplayName       string      `json:"displayName"`
-	GivenName         string      `json:"givenName"`
-	JobTitle          string      `json:"jobTitle"`
-	Mail              string      `json:"mail"`
-	MobilePhone       interface{} `json:"mobilePhone"`
-	OfficeLocation    string      `json:"officeLocation"`
-	PreferredLanguage interface{} `json:"preferredLanguage"`
-	Surname           string      `json:"surname"`
-	UserPrincipalName string      `json:"userPrincipalName"`
-	ID                string      `json:"id"`
 }

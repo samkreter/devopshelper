@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/samkreter/go-core/log"
 	"github.com/samkreter/vstsautoreviewer/pkg/store"
 	"github.com/samkreter/vstsautoreviewer/pkg/types"
 )
@@ -17,9 +18,18 @@ var (
 	ErrBaseGroupNameNotFound = errors.New("missing baseGroupName in reqeust")
 )
 
-func (s *Server) handleDeleteBaseGroup(w http.ResponseWriter, req *http.Request) {
+// DeleteBaseGroup deletes a base group
+func (s *Server) DeleteBaseGroup(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	ctx := context.Background()
+	logger := log.G(ctx)
+
+	currUser, err := getCurrentUser(ctx)
+	if err != nil {
+		logger.Errorf("DeleteBaseGroup: %v", err)
+		http.Error(w, "failed to get current user", http.StatusBadRequest)
+		return
+	}
 
 	baseGroupName := vars["baseGroupName"]
 	if baseGroupName == "" {
@@ -36,6 +46,11 @@ func (s *Server) handleDeleteBaseGroup(w http.ResponseWriter, req *http.Request)
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
 	}
 
+	if !s.userHasWritePermission(currUser, baseGroup.Owners) {
+		http.Error(w, fmt.Sprintf("User %s does not have permission to delete this base group.", currUser.Mail), http.StatusUnauthorized)
+		return
+	}
+
 	if err := s.RepoStore.DeleteBaseGroup(ctx, baseGroup.ID.Hex()); err != nil {
 		http.Error(w, fmt.Sprintf("failed to delete basegroupd: '%v'", err), http.StatusInternalServerError)
 		return
@@ -44,9 +59,18 @@ func (s *Server) handleDeleteBaseGroup(w http.ResponseWriter, req *http.Request)
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) handlePutBaseGroup(w http.ResponseWriter, req *http.Request) {
+// PutBaseGroup creates or updates a base group
+func (s *Server) PutBaseGroup(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	ctx := context.Background()
+	logger := log.G(ctx)
+
+	currUser, err := getCurrentUser(ctx)
+	if err != nil {
+		logger.Errorf("PutBaseGroup: %v", err)
+		http.Error(w, "failed to get current user", http.StatusBadRequest)
+		return
+	}
 
 	baseGroupName := vars["baseGroupName"]
 	if baseGroupName == "" {
@@ -63,6 +87,9 @@ func (s *Server) handlePutBaseGroup(w http.ResponseWriter, req *http.Request) {
 	originalBaseGroup, err := s.RepoStore.GetBaseGroupByName(ctx, baseGroupName)
 	if err != nil {
 		if err == store.ErrNotFound {
+			if len(baseGroup.Owners) == 0 {
+				baseGroup.Owners = []string{currUser.Mail}
+			}
 			if err := s.RepoStore.AddBaseGroup(ctx, baseGroup.Name, baseGroup); err != nil {
 				http.Error(w, fmt.Sprintf("failed to add base group: '%v", err), http.StatusInternalServerError)
 				return
@@ -72,6 +99,11 @@ func (s *Server) handlePutBaseGroup(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
+	}
+
+	if !s.userHasWritePermission(currUser, baseGroup.Owners) {
+		http.Error(w, fmt.Sprintf("User %s does not have permission to delete this base group.", currUser.Mail), http.StatusUnauthorized)
+		return
 	}
 
 	err = s.RepoStore.UpdateBaseGroup(ctx, originalBaseGroup.ID.Hex(), baseGroup)
@@ -93,7 +125,8 @@ func getBaseGroupFromBody(req *http.Request) (*types.BaseGroup, error) {
 	return &baseGroup, nil
 }
 
-func (s *Server) handleGetBaseGroup(w http.ResponseWriter, req *http.Request) {
+// GetBaseGroup gets a base group
+func (s *Server) GetBaseGroup(w http.ResponseWriter, req *http.Request) {
 	ctx := context.Background()
 	vars := mux.Vars(req)
 
@@ -119,7 +152,8 @@ func (s *Server) handleGetBaseGroup(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) handleGetBaseGroups(w http.ResponseWriter, req *http.Request) {
+// GetBaseGroups gets all base groups
+func (s *Server) GetBaseGroups(w http.ResponseWriter, req *http.Request) {
 	ctx := context.Background()
 
 	baseGroups, err := s.RepoStore.GetAllBaseGroups(ctx)
