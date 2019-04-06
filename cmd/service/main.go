@@ -35,7 +35,7 @@ var (
 
 func main() {
 	flag.StringVar(&configFilePath, "config-file", "", "filepath to the configuration file.")
-	flag.StringVar(&serverAddr, "addr", ":8080", "the address for the api server to listen on.")
+	flag.StringVar(&serverAddr, "addr", "localhost:8080", "the address for the api server to listen on.")
 	flag.StringVar(&logLvl, "log-level", "info", "the log level for the application")
 
 	flag.StringVar(&conf.Token, "vsts-token", "", "vsts personal access token")
