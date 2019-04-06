@@ -16,7 +16,7 @@ import (
 
 // GetReviewerGroupToRepository gets a single reviewer group from a repository
 func (s *Server) GetReviewerGroupToRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	logger := log.G(ctx)
 
@@ -66,7 +66,7 @@ func (s *Server) GetReviewerGroupToRepository(w http.ResponseWriter, req *http.R
 
 // DeleteReviewerToRepository deletes a single reviewer from a repository
 func (s *Server) DeleteReviewerToRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	logger := log.G(ctx)
 
@@ -142,7 +142,7 @@ func (s *Server) DeleteReviewerToRepository(w http.ResponseWriter, req *http.Req
 
 // AddReviewerToRepository adds a single reviewer to a repository
 func (s *Server) AddReviewerToRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	logger := log.G(ctx)
 
@@ -218,7 +218,7 @@ func (s *Server) AddReviewerToRepository(w http.ResponseWriter, req *http.Reques
 
 // AddBaseGroupToRepository adds all reviewers from a base group to a repository reviewer list
 func (s *Server) AddBaseGroupToRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	logger := log.G(ctx)
 
@@ -291,7 +291,7 @@ func (s *Server) AddBaseGroupToRepository(w http.ResponseWriter, req *http.Reque
 
 // DisableRepository disables a repository from being reviewed
 func (s *Server) DisableRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	logger := log.G(ctx)
 
@@ -332,7 +332,7 @@ func (s *Server) DisableRepository(w http.ResponseWriter, req *http.Request) {
 
 // EnableRepository enables a repository for review
 func (s *Server) EnableRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	logger := log.G(ctx)
 
@@ -374,7 +374,7 @@ func (s *Server) EnableRepository(w http.ResponseWriter, req *http.Request) {
 // DeleteRepository removes a repository
 func (s *Server) DeleteRepository(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx := context.Background()
+	ctx := req.Context()
 	logger := log.G(ctx)
 
 	currUser, err := getCurrentUser(ctx)
@@ -403,7 +403,7 @@ func (s *Server) DeleteRepository(w http.ResponseWriter, req *http.Request) {
 	repo, err := s.RepoStore.GetRepositoryByName(ctx, repoName, projectName)
 	if err != nil {
 		if err == store.ErrNotFound {
-			w.WriteHeader(http.StatusOK)
+			http.Error(w, fmt.Sprintf("repository %s/%s not found", projectName, repoName), http.StatusBadRequest)
 			return
 		}
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
@@ -425,7 +425,7 @@ func (s *Server) DeleteRepository(w http.ResponseWriter, req *http.Request) {
 // PostRepository creates a new repository
 func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx := context.Background()
+	ctx := req.Context()
 	logger := log.G(ctx)
 
 	currUser, err := getCurrentUser(ctx)
@@ -488,7 +488,7 @@ func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 // PutRepository updates a currently availble repository
 func (s *Server) PutRepository(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx := context.Background()
+	ctx := req.Context()
 	logger := log.G(ctx)
 
 	currUser, err := getCurrentUser(ctx)
@@ -545,7 +545,7 @@ func (s *Server) PutRepository(w http.ResponseWriter, req *http.Request) {
 
 // GetRepository gets a single repository
 func (s *Server) GetRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	logger := log.G(ctx)
 
@@ -583,7 +583,7 @@ func (s *Server) GetRepository(w http.ResponseWriter, req *http.Request) {
 
 // GetRepositoryPerProject gets all repositories from a project
 func (s *Server) GetRepositoryPerProject(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 	logger := log.G(ctx)
 
@@ -617,7 +617,7 @@ func (s *Server) GetRepositoryPerProject(w http.ResponseWriter, req *http.Reques
 
 // GetRepositories gets all avaible repositories
 func (s *Server) GetRepositories(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 
 	repos, err := s.RepoStore.GetAllRepositories(ctx)
 	if err != nil {

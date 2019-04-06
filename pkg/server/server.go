@@ -112,10 +112,10 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx = context.WithValue(ctx, userInfoContextKey, user)
-
 		// Add the current user to the log fields
 		ctx = log.WithLogger(ctx, logger.WithField(currentUserLogField, user.Mail))
+
+		ctx = context.WithValue(ctx, userInfoContextKey, user)
 
 		logger.Infof("using logged in user: '%s'", user.Mail)
 

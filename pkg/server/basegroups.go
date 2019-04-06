@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,7 +20,7 @@ var (
 // DeleteBaseGroup deletes a base group
 func (s *Server) DeleteBaseGroup(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx := context.Background()
+	ctx := req.Context()
 	logger := log.G(ctx)
 
 	currUser, err := getCurrentUser(ctx)
@@ -62,7 +61,7 @@ func (s *Server) DeleteBaseGroup(w http.ResponseWriter, req *http.Request) {
 // PutBaseGroup creates or updates a base group
 func (s *Server) PutBaseGroup(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx := context.Background()
+	ctx := req.Context()
 	logger := log.G(ctx)
 
 	currUser, err := getCurrentUser(ctx)
@@ -127,7 +126,7 @@ func getBaseGroupFromBody(req *http.Request) (*types.BaseGroup, error) {
 
 // GetBaseGroup gets a base group
 func (s *Server) GetBaseGroup(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 	vars := mux.Vars(req)
 
 	baseGroupName := vars["baseGroupName"]
@@ -154,7 +153,7 @@ func (s *Server) GetBaseGroup(w http.ResponseWriter, req *http.Request) {
 
 // GetBaseGroups gets all base groups
 func (s *Server) GetBaseGroups(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+	ctx := req.Context()
 
 	baseGroups, err := s.RepoStore.GetAllBaseGroups(ctx)
 	if err != nil {

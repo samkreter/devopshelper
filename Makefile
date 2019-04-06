@@ -8,10 +8,10 @@ push: build
 build:
 	docker build -t ${REVIEWER_REPO} -f ./cmd/reviewer/Dockerfile .
 
-build-service:
+build-apiserver:
 	docker build -t ${SERVICE_REPO} -f ./cmd/service/Dockerfile . 
 
-push-service:
+push-apiserver: build-apiserver
 	docker push ${SERVICE_REPO}
 
 helm-install:
