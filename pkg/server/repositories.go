@@ -3,28 +3,36 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/samkreter/go-core/log"
 	"github.com/samkreter/vstsautoreviewer/pkg/store"
 	"github.com/samkreter/vstsautoreviewer/pkg/types"
 	"github.com/samkreter/vstsautoreviewer/pkg/utils"
 )
 
-func (s *Server) handleGetReviewerGroupToRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// GetReviewerGroupToRepository gets a single reviewer group from a repository
+func (s *Server) GetReviewerGroupToRepository(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
+	logger := log.G(ctx)
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("getReviewerGroupToRepository %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("getReviewerGroupToRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -56,19 +64,32 @@ func (s *Server) handleGetReviewerGroupToRepository(w http.ResponseWriter, req *
 	}
 }
 
-func (s *Server) handleDeleteReviewerToRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// DeleteReviewerToRepository deletes a single reviewer from a repository
+func (s *Server) DeleteReviewerToRepository(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
+	logger := log.G(ctx)
+
+	currUser, err := getCurrentUser(ctx)
+	if err != nil {
+		logger.Errorf("DeleteReviewerToRepository: %v", err)
+		http.Error(w, "failed to get current user", http.StatusBadRequest)
+		return
+	}
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("deleteReviewerToRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("deleteReviewerToRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -91,6 +112,11 @@ func (s *Server) handleDeleteReviewerToRepository(w http.ResponseWriter, req *ht
 			return
 		}
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
+	}
+
+	if !s.userHasWritePermission(currUser, repo.Owners) {
+		http.Error(w, fmt.Sprintf("User %s does not have permission to delete a reviewer this repo.", currUser.Mail), http.StatusUnauthorized)
+		return
 	}
 
 	reviewerGroup, ok := repo.ReviewerGroups[reviewGroupName]
@@ -114,19 +140,32 @@ func (s *Server) handleDeleteReviewerToRepository(w http.ResponseWriter, req *ht
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) handleAddReviewerToRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// AddReviewerToRepository adds a single reviewer to a repository
+func (s *Server) AddReviewerToRepository(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
+	logger := log.G(ctx)
+
+	currUser, err := getCurrentUser(ctx)
+	if err != nil {
+		logger.Errorf("AddReviewerToRepository: %v", err)
+		http.Error(w, "failed to get current user", http.StatusBadRequest)
+		return
+	}
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("addReviewerToRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("addReviewerToRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -151,6 +190,11 @@ func (s *Server) handleAddReviewerToRepository(w http.ResponseWriter, req *http.
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
 	}
 
+	if !s.userHasWritePermission(currUser, repo.Owners) {
+		http.Error(w, fmt.Sprintf("User %s does not have permission to add a reviewer this repo.", currUser.Mail), http.StatusUnauthorized)
+		return
+	}
+
 	reviewerGroup, ok := repo.ReviewerGroups[reviewGroupName]
 	if !ok {
 		http.Error(w, fmt.Sprintf("reviewer group '%s' not found", reviewGroupName), http.StatusBadRequest)
@@ -172,19 +216,32 @@ func (s *Server) handleAddReviewerToRepository(w http.ResponseWriter, req *http.
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) handleAddBaseGroupToRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// AddBaseGroupToRepository adds all reviewers from a base group to a repository reviewer list
+func (s *Server) AddBaseGroupToRepository(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
+	logger := log.G(ctx)
+
+	currUser, err := getCurrentUser(ctx)
+	if err != nil {
+		logger.Errorf("AddBaseGroupToRepository: %v", err)
+		http.Error(w, "failed to get current user", http.StatusBadRequest)
+		return
+	}
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("addBaseGroupToRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("addBaseGroupToRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -212,6 +269,11 @@ func (s *Server) handleAddBaseGroupToRepository(w http.ResponseWriter, req *http
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
 	}
 
+	if !s.userHasWritePermission(currUser, repo.Owners) {
+		http.Error(w, fmt.Sprintf("User %s does not have permission to add a base group this repo.", currUser.Mail), http.StatusUnauthorized)
+		return
+	}
+
 	// Add the base group into the repos reviewer groups
 	for reviewGroupName, reviewers := range baseGroup.ReviewerGroups {
 		repo.ReviewerGroups[reviewGroupName].Reviewers = append(
@@ -227,19 +289,25 @@ func (s *Server) handleAddBaseGroupToRepository(w http.ResponseWriter, req *http
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) handleDisableRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// DisableRepository disables a repository from being reviewed
+func (s *Server) DisableRepository(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
+	logger := log.G(ctx)
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("DisableRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("DisableRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -262,19 +330,25 @@ func (s *Server) handleDisableRepository(w http.ResponseWriter, req *http.Reques
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) handleEnableRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// EnableRepository enables a repository for review
+func (s *Server) EnableRepository(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
+	logger := log.G(ctx)
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("EnableRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("EnableRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -297,29 +371,47 @@ func (s *Server) handleEnableRepository(w http.ResponseWriter, req *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) handleDeleteRepository(w http.ResponseWriter, req *http.Request) {
+// DeleteRepository removes a repository
+func (s *Server) DeleteRepository(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx := context.Background()
+	ctx := req.Context()
+	logger := log.G(ctx)
+
+	currUser, err := getCurrentUser(ctx)
+	if err != nil {
+		logger.Errorf("DeleteRepository: %v", err)
+		http.Error(w, "failed to get current user", http.StatusBadRequest)
+		return
+	}
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("deleteRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("deleteRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	repo, err := s.RepoStore.GetRepositoryByName(ctx, repoName, projectName)
 	if err != nil {
 		if err == store.ErrNotFound {
-			w.WriteHeader(http.StatusOK)
+			http.Error(w, fmt.Sprintf("repository %s/%s not found", projectName, repoName), http.StatusBadRequest)
 			return
 		}
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
+	}
+
+	if !s.userHasWritePermission(currUser, repo.Owners) {
+		http.Error(w, fmt.Sprintf("User %s does not have permission to delete this repo.", currUser.Mail), http.StatusUnauthorized)
+		return
 	}
 
 	if err := s.RepoStore.DeleteRepository(ctx, repo.ID.Hex()); err != nil {
@@ -330,19 +422,32 @@ func (s *Server) handleDeleteRepository(w http.ResponseWriter, req *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
-func (s *Server) handlePostRepository(w http.ResponseWriter, req *http.Request) {
+// PostRepository creates a new repository
+func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx := context.Background()
+	ctx := req.Context()
+	logger := log.G(ctx)
+
+	currUser, err := getCurrentUser(ctx)
+	if err != nil {
+		logger.Errorf("PostRepository: %v", err)
+		http.Error(w, "failed to get current user", http.StatusBadRequest)
+		return
+	}
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("PostRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("PostRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -360,34 +465,52 @@ func (s *Server) handlePostRepository(w http.ResponseWriter, req *http.Request) 
 	_, err = s.RepoStore.GetRepositoryByName(ctx, repoName, projectName)
 	if err != nil {
 		if err == store.ErrNotFound {
+			// If createing a new repo, make the creator the owner
+			if len(repo.Owners) == 0 {
+				repo.Owners = []string{currUser.Mail}
+			}
+
 			if err := s.RepoStore.AddRepository(ctx, repo); err != nil {
 				http.Error(w, fmt.Sprintf("failed to add repository: '%v", err), http.StatusInternalServerError)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusCreated)
 			return
 		}
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
 	}
 
 	http.Error(w, fmt.Sprintf("repository %s/%s already exists", projectName, repoName), http.StatusBadRequest)
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	return
 }
 
-func (s *Server) handlePutRepository(w http.ResponseWriter, req *http.Request) {
+// PutRepository updates a currently availble repository
+func (s *Server) PutRepository(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	ctx := context.Background()
+	ctx := req.Context()
+	logger := log.G(ctx)
+
+	currUser, err := getCurrentUser(ctx)
+	if err != nil {
+		logger.Errorf("PutRepository: %v", err)
+		http.Error(w, "failed to get current user", http.StatusBadRequest)
+		return
+	}
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("PutRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("PutRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -397,20 +520,21 @@ func (s *Server) handlePutRepository(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, err = s.RepoStore.GetRepositoryByName(ctx, repoName, projectName)
+	repoCurr, err := s.RepoStore.GetRepositoryByName(ctx, repoName, projectName)
 	if err != nil {
 		if err == store.ErrNotFound {
-			if err := s.RepoStore.AddRepository(ctx, repo); err != nil {
-				http.Error(w, fmt.Sprintf("failed to add repository: '%v", err), http.StatusInternalServerError)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
+			http.Error(w, fmt.Sprintf("repository %s/%s does not exist", projectName, repoName), http.StatusBadRequest)
 			return
 		}
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
 	}
 
-	err = s.RepoStore.UpdateRepository(ctx, repo.ID.Hex(), repo)
+	if !s.userHasWritePermission(currUser, repo.Owners) {
+		http.Error(w, fmt.Sprintf("User %s does not have write permission for this repo.", currUser.Mail), http.StatusUnauthorized)
+		return
+	}
+
+	err = s.RepoStore.UpdateRepository(ctx, repoCurr.ID.Hex(), repo)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to update repository: '%v'", err), http.StatusInternalServerError)
 	}
@@ -419,19 +543,25 @@ func (s *Server) handlePutRepository(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func (s *Server) handleGetRepository(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// GetRepository gets a single repository
+func (s *Server) GetRepository(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
+	logger := log.G(ctx)
 
 	repoName := vars["repository"]
 	if repoName == "" {
-		http.Error(w, "repository name missing from request", http.StatusBadRequest)
+		errMsg := "repository name missing from request"
+		logger.Errorf("GetRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	projectName := vars["project"]
-	if repoName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+	if projectName == "" {
+		errMsg := "project name missing from request"
+		logger.Errorf("GetRepository: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -451,13 +581,17 @@ func (s *Server) handleGetRepository(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *Server) handleGetRepositoryPerProject(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// GetRepositoryPerProject gets all repositories from a project
+func (s *Server) GetRepositoryPerProject(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 	vars := mux.Vars(req)
+	logger := log.G(ctx)
 
 	projectName := vars["project"]
 	if projectName == "" {
-		http.Error(w, "project name missing from request", http.StatusBadRequest)
+		errMsg := "project name missing from request"
+		logger.Errorf("GetRepositoryPerProject: %v", errMsg)
+		http.Error(w, errMsg, http.StatusBadRequest)
 		return
 	}
 
@@ -481,8 +615,9 @@ func (s *Server) handleGetRepositoryPerProject(w http.ResponseWriter, req *http.
 	}
 }
 
-func (s *Server) handleGetRepositories(w http.ResponseWriter, req *http.Request) {
-	ctx := context.Background()
+// GetRepositories gets all avaible repositories
+func (s *Server) GetRepositories(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
 
 	repos, err := s.RepoStore.GetAllRepositories(ctx)
 	if err != nil {
@@ -527,4 +662,32 @@ func getReviewerFromBody(req *http.Request) (*types.Reviewer, error) {
 	}
 
 	return &reviewer, nil
+}
+
+func getCurrentUser(ctx context.Context) (*types.GraphUser, error) {
+	user, ok := ctx.Value(userInfoContextKey).(*types.GraphUser)
+	if !ok {
+		return nil, errors.New("no current user in the context")
+	}
+
+	return user, nil
+}
+
+func (s *Server) userHasWritePermission(user *types.GraphUser, owners []string) bool {
+	// Allow full access for admins
+	if contains(s.Admins, user.Mail) {
+		return true
+	}
+
+	return contains(owners, user.Mail)
+}
+
+func contains(list []string, key string) bool {
+	for _, elem := range list {
+		if elem == key {
+			return true
+		}
+	}
+
+	return false
 }

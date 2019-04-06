@@ -9,6 +9,22 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
+// GraphUser stores information retrieved from the graph API
+type GraphUser struct {
+	OdataContext      string      `json:"@odata.context"`
+	BusinessPhones    []string    `json:"businessPhones"`
+	DisplayName       string      `json:"displayName"`
+	GivenName         string      `json:"givenName"`
+	JobTitle          string      `json:"jobTitle"`
+	Mail              string      `json:"mail"`
+	MobilePhone       interface{} `json:"mobilePhone"`
+	OfficeLocation    string      `json:"officeLocation"`
+	PreferredLanguage interface{} `json:"preferredLanguage"`
+	Surname           string      `json:"surname"`
+	UserPrincipalName string      `json:"userPrincipalName"`
+	ID                string      `json:"id"`
+}
+
 // Repository holds the information for a repository
 type Repository struct {
 	ID             bson.ObjectId  `json:"id,omitempty" bson:"_id,omitempty"`
@@ -19,6 +35,7 @@ type Repository struct {
 	ReviewerGroups ReviewerGroups `json:"reviewerGroups"`
 	CurrentPos     map[string]int `json:"-"`
 	Enabled        bool           `json:"enabled"`
+	Owners         []string       `json:"owners"`
 }
 
 // BaseGroup holds the base groups to be added or removed from a repo
@@ -28,6 +45,7 @@ type BaseGroup struct {
 	Updated        *time.Time     `json:"_updated,omitempty" bson:"_updated,omitempty"`
 	Name           string         `json:"name"`
 	ReviewerGroups ReviewerGroups `json:"reviewerGroups"`
+	Owners         []string       `json:"owners"`
 }
 
 // ReviewerGroups is a list of type ReviewerGroup
