@@ -474,14 +474,14 @@ func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 				http.Error(w, fmt.Sprintf("failed to add repository: '%v", err), http.StatusInternalServerError)
 				return
 			}
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusCreated)
 			return
 		}
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
 	}
 
 	http.Error(w, fmt.Sprintf("repository %s/%s already exists", projectName, repoName), http.StatusBadRequest)
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 	return
 }
 
