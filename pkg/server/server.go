@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/samkreter/go-core/httputil"
@@ -35,12 +36,16 @@ type Server struct {
 }
 
 // NewServer creates a new server
-func NewServer(addr string, repoStore store.RepositoryStore) (*Server, error) {
+func NewServer(addr string, vstsClient *vsts.Client, repoStore store.RepositoryStore, admins []string) (*Server, error) {
 	if addr == "" {
 		addr = defaultAddr
 	}
 
+	log.G(context.TODO()).Infof("Adding admins: '%s'", strings.Join(admins, ", "))
+
 	return &Server{
+		Admins:     admins,
+		vstsClient: vstsClient,
 		Addr:       addr,
 		RepoStore:  repoStore,
 		httpClient: httputil.NewHTTPClient(true, true, true),
