@@ -7,10 +7,8 @@ image:
   tag: stable
   pullPolicy: Always
 
-nameOverride: "apiserver"
-fullnameOverride: "apiserver"
-
-name: apiserver
+nameOverride: "test-apiserver"
+fullnameOverride: "test-apiserver"
 
 service:
   type: ClusterIP
@@ -24,7 +22,7 @@ apiserver:
   username: sakreter
   mongouri: <insert-mongo-uri>
   loglevel: debug
-  dbname: reviewerBot
+  dbname: reviewerBotTest
   admins: sakreter@microsoft.com,Samuel.Kreter@microsoft.com
 
 ingress:
@@ -34,7 +32,7 @@ ingress:
     kubernetes.io/ingress.class: addon-http-application-routing
     # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: devops.8f54fdeb48f744faa9bf.eastus.aksapp.io
+    - host: test.devops.8f54fdeb48f744faa9bf.eastus.aksapp.io
       paths: 
         - /api
 

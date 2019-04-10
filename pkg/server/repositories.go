@@ -48,6 +48,7 @@ func (s *Server) GetReviewerGroupToRepository(w http.ResponseWriter, req *http.R
 			http.Error(w, fmt.Sprintf("repository '%s/%s' not found", projectName, repoName), http.StatusBadRequest)
 			return
 		}
+		logger.Errorf(fmt.Sprintf("database error: '%v'", err))
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
 	}
 
@@ -424,7 +425,6 @@ func (s *Server) DeleteRepository(w http.ResponseWriter, req *http.Request) {
 
 // PostRepository creates a new repository
 func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
-	vars := mux.Vars(req)
 	ctx := req.Context()
 	logger := log.G(ctx)
 
@@ -435,39 +435,31 @@ func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	repoName := vars["repository"]
-	if repoName == "" {
-		errMsg := "repository name missing from request"
-		logger.Errorf("PostRepository: %v", errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
-		return
-	}
-
-	projectName := vars["project"]
-	if projectName == "" {
-		errMsg := "project name missing from request"
-		logger.Errorf("PostRepository: %v", errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
-		return
-	}
-
 	repo, err := getRepositoryFromBody(req)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to parse repository body: '%v'", err), http.StatusBadRequest)
 		return
 	}
 
+	logger.Infof("Got post repo request: %+v", repo)
+
 	err = validateRepository(repo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	_, err = s.RepoStore.GetRepositoryByName(ctx, repoName, projectName)
+	_, err = s.RepoStore.GetRepositoryByName(ctx, repo.Name, repo.ProjectName)
 	if err != nil {
 		if err == store.ErrNotFound {
 			// If createing a new repo, make the creator the owner
 			if len(repo.Owners) == 0 {
 				repo.Owners = []string{currUser.Mail}
+			}
+
+			// process the reviewers and get their vsts ids
+			if err := s.processReviewers(repo.ReviewerGroups); err != nil {
+				httpError(ctx, w, err.Error(), http.StatusBadRequest)
+				return
 			}
 
 			if err := s.RepoStore.AddRepository(ctx, repo); err != nil {
@@ -480,9 +472,32 @@ func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
 	}
 
-	http.Error(w, fmt.Sprintf("repository %s/%s already exists", projectName, repoName), http.StatusBadRequest)
+	http.Error(w, fmt.Sprintf("repository %s/%s already exists", repo.ProjectName, repo.Name), http.StatusBadRequest)
 	w.WriteHeader(http.StatusCreated)
 	return
+}
+
+func (s *Server) processReviewers(reviewerGroups types.ReviewerGroups) error {
+	for _, group := range reviewerGroups {
+		reviewers := make([]*types.Reviewer, 0)
+		for _, reviewer := range group.Reviewers {
+			// If the ID is already populated, continue
+			if reviewer.ID != "" {
+				reviewers = append(reviewers, reviewer)
+				continue
+			}
+
+			fullReviewer, err := utils.GetReviwerFromAlias(reviewer.Alias, s.vstsClient.RestClient)
+			if err != nil {
+				log.G(context.TODO()).Errorf("failed to validate reviewer '%s' with err: '%v'", reviewer.Alias, err)
+				continue
+			}
+
+			reviewers = append(reviewers, fullReviewer)
+		}
+		group.Reviewers = reviewers
+	}
+	return nil
 }
 
 // PutRepository updates a currently availble repository
@@ -527,6 +542,12 @@ func (s *Server) PutRepository(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		http.Error(w, fmt.Sprintf("database error: '%v'", err), http.StatusInternalServerError)
+	}
+
+	// process the reviewers and get their vsts ids
+	if err := s.processReviewers(repo.ReviewerGroups); err != nil {
+		httpError(ctx, w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	if !s.userHasWritePermission(currUser, repo.Owners) {
@@ -585,19 +606,17 @@ func (s *Server) GetRepository(w http.ResponseWriter, req *http.Request) {
 func (s *Server) GetRepositoryPerProject(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	vars := mux.Vars(req)
-	logger := log.G(ctx)
 
 	projectName := vars["project"]
 	if projectName == "" {
 		errMsg := "project name missing from request"
-		logger.Errorf("GetRepositoryPerProject: %v", errMsg)
-		http.Error(w, errMsg, http.StatusBadRequest)
+		httpError(ctx, w, errMsg, http.StatusBadRequest)
 		return
 	}
 
 	repos, err := s.RepoStore.GetAllRepositories(ctx)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to get repositories: '%v'", err), http.StatusInternalServerError)
+		httpError(ctx, w, fmt.Sprintf("failed to get repositories: '%v'", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -610,7 +629,7 @@ func (s *Server) GetRepositoryPerProject(w http.ResponseWriter, req *http.Reques
 
 	err = json.NewEncoder(w).Encode(result)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to marshal request: '%v'", err), http.StatusInternalServerError)
+		httpError(ctx, w, fmt.Sprintf("failed to marshal request: '%v'", err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -621,13 +640,13 @@ func (s *Server) GetRepositories(w http.ResponseWriter, req *http.Request) {
 
 	repos, err := s.RepoStore.GetAllRepositories(ctx)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to get repositories: '%v'", err), http.StatusInternalServerError)
+		httpError(ctx, w, fmt.Sprintf("failed to get repositories: '%v'", err), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(repos)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to marshal request: '%v'", err), http.StatusInternalServerError)
+		httpError(ctx, w, fmt.Sprintf("failed to marshal request: '%v'", err), http.StatusInternalServerError)
 		return
 	}
 }
@@ -671,6 +690,11 @@ func getCurrentUser(ctx context.Context) (*types.GraphUser, error) {
 	}
 
 	return user, nil
+}
+
+func httpError(ctx context.Context, w http.ResponseWriter, msg string, code int) {
+	log.G(ctx).Error(msg)
+	http.Error(w, msg, code)
 }
 
 func (s *Server) userHasWritePermission(user *types.GraphUser, owners []string) bool {

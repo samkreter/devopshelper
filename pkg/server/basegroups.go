@@ -83,6 +83,11 @@ func (s *Server) PutBaseGroup(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if err := s.processReviewers(baseGroup.ReviewerGroups); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	originalBaseGroup, err := s.RepoStore.GetBaseGroupByName(ctx, baseGroupName)
 	if err != nil {
 		if err == store.ErrNotFound {

@@ -4,9 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"log"
 	"net"
 	"net/url"
+
+	"github.com/samkreter/go-core/log"
 
 	"github.com/globalsign/mgo"
 	"github.com/samkreter/vstsautoreviewer/pkg/types"
@@ -65,6 +66,8 @@ func (ms *MongoStore) Close() {
 
 // NewMongoStore creates a new mongo store
 func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
+	ctx := context.Background()
+	logger := log.G(ctx)
 	if o.DBName == "" {
 		return nil, errors.New("missing Mongo DBName")
 	}
@@ -73,40 +76,42 @@ func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
 		return nil, errors.New("missing Mongo connection string")
 	}
 
+	logger.Infof("Using DB: '%s' for mongo.", o.DBName)
+
 	var session *mgo.Session
 	var err error
 	if o.UseSSL {
-		log.Println("Using SSL for mongodb connection...")
+		logger.Info("Using SSL for mongodb connection...")
 		uri, err := StripSSLFromURI(o.MongoURI)
 		if err != nil {
-			log.Printf("failed to strip ssl from mongo connection url: %v", err)
+			logger.Errorf("failed to strip ssl from mongo connection url: %v", err)
 			return nil, err
 		}
 
 		dialInfo, err := mgo.ParseURL(uri)
 		if err != nil {
-			log.Printf("failed to parse URI: %v", err)
+			logger.Errorf("failed to parse URI: %v", err)
 			return nil, err
 		}
 
 		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
 			conn, err := tls.Dial("tcp", addr.String(), &tls.Config{})
 			if err != nil {
-				log.Printf("failed to dial mongo: %v", err)
+				logger.Errorf("failed to dial mongo: %v", err)
 			}
 			return conn, err
 		}
 
 		session, err = mgo.DialWithInfo(dialInfo)
 		if err != nil {
-			log.Printf("failed to connect to mongodb using ssl: %v", err)
+			logger.Errorf("failed to connect to mongodb using ssl: %v", err)
 			return nil, err
 		}
 
 	} else {
 		session, err = mgo.Dial(o.MongoURI)
 		if err != nil {
-			log.Printf("failed to connect to mongodb: %v", err)
+			logger.Errorf("failed to connect to mongodb: %v", err)
 			return nil, err
 		}
 	}

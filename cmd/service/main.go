@@ -25,6 +25,7 @@ const (
 
 var (
 	configFilePath string
+	admins         string
 	vstsToken      string
 	vstsUsername   string
 	serverAddr     string
@@ -40,6 +41,8 @@ func main() {
 
 	flag.StringVar(&conf.Token, "vsts-token", "", "vsts personal access token")
 	flag.StringVar(&conf.Username, "vsts-username", "", "vsts username")
+
+	flag.StringVar(&admins, "admins", "", "admins to be added to each repo, comma seperated")
 
 	flag.StringVar(&mongoOptions.MongoURI, "mongo-uri", "", "connection string for the mongo database")
 	flag.StringVar(&mongoOptions.DBName, "mongo-dbname", "reviewerBot", "the mongo database to access")
@@ -67,9 +70,23 @@ func main() {
 		}
 	}
 
+	adminsSplit := strings.Split(admins, ",")
+
 	repoStore, err := store.NewMongoStore(mongoOptions)
 	if err != nil {
 		logger.Fatal(err)
+	}
+
+	vstsConfig := &vsts.Config{
+		Token:      conf.Token,
+		Username:   conf.Username,
+		APIVersion: conf.APIVersion,
+		Instance:   conf.Instance,
+	}
+
+	vstsClient, err := vsts.NewClient(vstsConfig)
+	if err != nil {
+		logger.Fatalf("failed to create vsts client with err: '%v'", err)
 	}
 
 	go func() {
@@ -86,7 +103,7 @@ func main() {
 		}
 	}()
 
-	s, err := server.NewServer(serverAddr, repoStore)
+	s, err := server.NewServer(serverAddr, vstsClient, repoStore, adminsSplit)
 	if err != nil {
 		logger.Fatal(err)
 	}
