@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/samkreter/go-core/log"
@@ -456,6 +457,10 @@ func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 				repo.Owners = []string{currUser.Mail}
 			}
 
+			now := time.Now().UTC()
+			repo.Created = &now
+			repo.Updated = &now
+
 			// process the reviewers and get their vsts ids
 			if err := s.processReviewers(repo.ReviewerGroups); err != nil {
 				httpError(ctx, w, err.Error(), http.StatusBadRequest)
@@ -554,6 +559,9 @@ func (s *Server) PutRepository(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("User %s does not have write permission for this repo.", currUser.Mail), http.StatusUnauthorized)
 		return
 	}
+
+	now := time.Now().UTC()
+	repo.Updated = &now
 
 	err = s.RepoStore.UpdateRepository(ctx, repoCurr.ID.Hex(), repo)
 	if err != nil {

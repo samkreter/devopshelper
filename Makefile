@@ -1,7 +1,7 @@
 
 
 SERVICE_REPO="pskreter/reviewer-service:0.0.6-alpha"
-TEST_SERVICE_REPO="pskreter/reviewer-service-test:0.0.8"
+TEST_SERVICE_REPO="pskreter/reviewer-service-test:0.0.9"
 REVIEWER_REPO="pskreter/vstsreviewer:1.0.12"
 
 push: build
@@ -51,5 +51,5 @@ helm-test-upgrade:
 		--set apiserver.username=${VSTS_USERNAME} --set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${TEST_SERVICE_REPO} test-apiserver ./charts/apiserver
 
-full-test: push-test-apiserver
+test-full: push-test-apiserver
 	make helm-test-upgrade

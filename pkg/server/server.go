@@ -61,8 +61,8 @@ func (s *Server) Run() {
 	// Base Groups
 	router.HandleFunc("/api/basegroups", s.GetBaseGroups).Methods("GET")
 	router.HandleFunc("/api/basegroups/{baseGroupName}", s.GetBaseGroup).Methods("GET")
-	router.HandleFunc("/api/basegroups/{basegroupName}", s.PutBaseGroup).Methods("PUT")
-	router.HandleFunc("/api/basegroups/{basegroupName}", s.DeleteBaseGroup).Methods("DELETE")
+	router.HandleFunc("/api/basegroups/{baseGroupName}", s.PutBaseGroup).Methods("PUT")
+	router.HandleFunc("/api/basegroups/{baseGroupName}", s.DeleteBaseGroup).Methods("DELETE")
 
 	// Repos
 	router.HandleFunc("/api/repositories", s.GetRepositories).Methods("GET")
