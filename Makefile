@@ -1,10 +1,19 @@
 
 
 REVIEWER_REPO="pskreter/vstsreviewer:1.0.12"
-SERVICE_REPO="pskreter/reviewer-service:0.0.6-alpha"
 TEST_SERVICE_REPO="pskreter/reviewer-service-test:0.0.9"
-FRONTEND_REPO="pskreter/reviewer-frontend:0.0.1"
 
+SERVICE_REPO="pskreter/reviewer-service:0.0.7-alpha"
+FRONTEND_REPO="pskreter/reviewer-frontend:0.0.2"
+
+
+deploy:
+	make frontend-deploy
+	make apiserver-deploy
+
+upgrade:
+	make frontend-upgrade
+	make apiserver-upgrade
 
 ###### Front End #######
 build-frontend:
@@ -23,7 +32,7 @@ frontend-deploy: push-frontend
 	helm install --name frontend ./charts/frontend --set frontend.image=${FRONTEND_REPO}
 
 frontend-upgrade: push-frontend
-	helm upgrade --set apiserver.image=${SERVICE_REPO} frontend ./charts/frontend
+	helm upgrade --set frontend.image=${SERVICE_REPO} frontend ./charts/frontend
 
 ###### API Server #######
 build-apiserver:
