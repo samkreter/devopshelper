@@ -40,30 +40,20 @@
         myMSALObj.logout();
     }
 
-    // function acquireTokenPopupAndCallMSGraph() {
-    //     //Call acquireTokenSilent (iframe) to obtain a token for Microsoft Graph
-    //     myMSALObj.acquireTokenSilent(applicationConfig.graphScopes).then(function (accessToken) {
-    //         console.log("######: ", accessToken)
-    //         callMSGraph(applicationConfig.graphEndpoint, accessToken, graphAPICallback);
-    //     }, function (error) {
-    //         console.log(error);
-    //         // Call acquireTokenPopup (popup window) in case of acquireTokenSilent failure due to consent or interaction required ONLY
-    //         if (error.indexOf("consent_required") !== -1 || error.indexOf("interaction_required") !== -1 || error.indexOf("login_required") !== -1) {
-    //             myMSALObj.acquireTokenPopup(applicationConfig.graphScopes).then(function (accessToken) {
-    //                 callMSGraph(applicationConfig.graphEndpoint, accessToken, graphAPICallback);
-    //             }, function (error) {
-    //                 console.log(error);
-    //             });
-    //         }
-    //     });
-    // }
-
-   function acquireTokenPopupAndCallMSGraph() {
+    function acquireTokenPopupAndCallMSGraph() {
         //Call acquireTokenSilent (iframe) to obtain a token for Microsoft Graph
-        myMSALObj.acquireTokenPopup(applicationConfig.graphScopes).then(function (accessToken) {
+        myMSALObj.acquireTokenSilent(applicationConfig.graphScopes).then(function (accessToken) {
             callMSGraph(applicationConfig.graphEndpoint, accessToken, graphAPICallback);
         }, function (error) {
             console.log(error);
+            // Call acquireTokenPopup (popup window) in case of acquireTokenSilent failure due to consent or interaction required ONLY
+            if (error.indexOf("consent_required") !== -1 || error.indexOf("interaction_required") !== -1 || error.indexOf("login_required") !== -1) {
+                myMSALObj.acquireTokenPopup(applicationConfig.graphScopes).then(function (accessToken) {
+                    callMSGraph(applicationConfig.graphEndpoint, accessToken, graphAPICallback);
+                }, function (error) {
+                    console.log(error);
+                });
+            }
         });
     }
 
