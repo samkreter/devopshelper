@@ -1,2 +1,4 @@
 .env-local
 conf-local
+
+**/node_modules

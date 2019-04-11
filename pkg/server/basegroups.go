@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/samkreter/go-core/log"
@@ -109,6 +110,9 @@ func (s *Server) PutBaseGroup(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("User %s does not have permission to delete this base group.", currUser.Mail), http.StatusUnauthorized)
 		return
 	}
+
+	now := time.Now().UTC()
+	baseGroup.Updated = &now
 
 	err = s.RepoStore.UpdateBaseGroup(ctx, originalBaseGroup.ID.Hex(), baseGroup)
 	if err != nil {
