@@ -6,6 +6,8 @@ import ArgonDashboard from './plugins/argon-dashboard'
 
 Vue.config.productionTip = false
 
+Vue.prototype.$authService = new AuthService();
+
 Vue.use(ArgonDashboard)
 new Vue({
   router,

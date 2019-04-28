@@ -13,17 +13,25 @@ export default class AuthService {
       authority: "https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47"
     };
 
+    if (window.location.hash.includes("id_token")) {
+      new Msal.UserAgentApplication("4ecf3d26-e844-4855-9158-b8f6c0121b50", null, null);
+    }
+
     this.app = new Msal.UserAgentApplication(
       this.applicationConfig.clientID,
       this.applicationConfig.authority,
       this.acquireTokenRedirectCallBack,
-      {storeAuthStateInCookie: true, cacheLocation: "localStorage"}
+      {storeAuthStateInCookie: true,
+        //redirectUri: "msal7bdce0c4-74d3-4dca-89cd-9ca67ec69eab://auth",
+        cacheLocation: "localStorage",
+        navigateToLoginRequestUrl: false}
     );
   }
   login() {
     return this.app.loginPopup(this.applicationConfig.graphScopes).then(
       idToken => {
         const user = this.app.getUser();
+        console.log("####: ", user)
         if (user) {
           return user;
         } else {

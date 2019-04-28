@@ -5,66 +5,76 @@
                     <div class="card-header bg-transparent pb-5">
                         <div class="text-muted text-center mt-2 mb-3"><small>Sign in with</small></div>
                         <div class="btn-wrapper text-center">
-                            <a href="#" class="btn btn-neutral btn-icon">
-                                <span class="btn-inner--icon"><img src="img/icons/common/github.svg"></span>
-                                <span class="btn-inner--text">Github</span>
-                            </a>
-                            <a href="#" class="btn btn-neutral btn-icon">
-                                <span class="btn-inner--icon"><img src="img/icons/common/google.svg"></span>
-                                <span class="btn-inner--text">Google</span>
+                            <a v-on:click="login()" class="btn btn-neutral btn-icon">
+                                <span class="btn-inner--icon"><img src="img/icons/common/microsoft.jpg"></span>
+                                <span class="btn-inner--text">Microsoft</span>
                             </a>
                         </div>
-                    </div>
-                    <div class="card-body px-lg-5 py-lg-5">
-                        <div class="text-center text-muted mb-4">
-                            <small>Or sign in with credentials</small>
-                        </div>
-                        <form role="form">
-                            <base-input class="input-group-alternative mb-3"
-                                        placeholder="Email"
-                                        addon-left-icon="ni ni-email-83"
-                                        v-model="model.email">
-                            </base-input>
-
-                            <base-input class="input-group-alternative"
-                                        placeholder="Password"
-                                        type="password"
-                                        addon-left-icon="ni ni-lock-circle-open"
-                                        v-model="model.password">
-                            </base-input>
-
-                            <base-checkbox class="custom-control-alternative">
-                                <span class="text-muted">Remember me</span>
-                            </base-checkbox>
-                            <div class="text-center">
-                                <base-button type="primary" class="my-4">Sign in</base-button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="row mt-3">
-                    <div class="col-6">
-                        <a href="#" class="text-light"><small>Forgot password?</small></a>
-                    </div>
-                    <div class="col-6 text-right">
-                        <router-link to="/register" class="text-light"><small>Create new account</small></router-link>
                     </div>
                 </div>
             </div>
         </div>
 </template>
+
 <script>
-  export default {
-    name: 'login',
-    data() {
-      return {
-        model: {
-          email: '',
-          password: ''
+    import AuthService from '../services/auth.service';
+    import GraphService from '../services/graph.service';
+
+    export default {
+        name: 'Login',
+        data() {
+            return {
+                user: null,
+                userInfo: null,
+                apiCallFailed: false,
+                loginFailed: false
+            }
+        },
+        created() {
+          this.authService = new AuthService();
+          this.graphService = new GraphService();
+        },
+        methods: {
+            login() {
+              this.loginFailed = false;
+              this.authService.login().then(
+                user => {
+                  if (user) {
+                    console.log("#######: ", user)
+                    this.user = user;
+                    this.callAPI()
+                  } else {
+                    this.loginFailed = true;
+                  }
+                },
+                () => {
+                  this.loginFailed = true;
+                }
+              );
+            },
+            callAPI() {
+                this.apiCallFailed = false;
+                this.authService.getToken().then(
+                    token => {
+                    this.graphService.getUserInfo(token).then(
+                        data => {
+                        this.userInfo = data;
+                        },
+                        error => {
+                        console.error(error);
+                        this.apiCallFailed = true;
+                        }
+                    );
+                    },
+                    error => {
+                    console.error(error);
+                    this.apiCallFailed = true;
+                    }
+                );
+            }
         }
-      }
     }
-  }
 </script>
+
 <style>
 </style>
