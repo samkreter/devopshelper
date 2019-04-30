@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <notifications></notifications>
-    <router-view @authenticated="setAuthenticated" />
+    <router-view @authenticated="setLoginUser" />
   </div>
 </template>
 
@@ -10,20 +10,21 @@
         name: 'App',
         data() {
             return {
-                authenticated: false,
+                user: null,
             }
         },
         mounted() {
-            if(!this.authenticated) {
+            if(!this.user) {
                 this.$router.replace({ name: "login" });
             }
         },
         methods: {
-            setAuthenticated(status) {
-                this.authenticated = status;
+            setLoginUser(user) {
+                console.log("getuser: ", user)
+                this.user = user;
             },
             logout() {
-                this.authenticated = false;
+                this.user = null;
             }
         }
     }

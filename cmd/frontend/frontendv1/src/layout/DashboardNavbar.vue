@@ -20,7 +20,7 @@
                   <img alt="Image placeholder" src="img/theme/team-4-800x800.jpg">
                 </span>
                         <div class="media-body ml-2 d-none d-lg-block">
-                            <span class="mb-0 text-sm  font-weight-bold">Jessica Jones</span>
+                            <span class="mb-0 text-sm  font-weight-bold">{{user.name}}</span>
                         </div>
                     </div>
 
@@ -45,7 +45,7 @@
                             <span>Support</span>
                         </router-link>
                         <div class="dropdown-divider"></div>
-                        <router-link to="/profile" class="dropdown-item">
+                        <router-link :to="{ name: 'logout'}" class="dropdown-item">
                             <i class="ni ni-user-run"></i>
                             <span>Logout</span>
                         </router-link>
@@ -61,7 +61,8 @@
       return {
         activeNotifications: false,
         showMenu: false,
-        searchQuery: ''
+        searchQuery: '',
+        user: this.$store.state.user
       };
     },
     methods: {
@@ -73,6 +74,9 @@
       },
       toggleMenu() {
         this.showMenu = !this.showMenu;
+      },
+      getCurrUser(){
+
       }
     }
   };

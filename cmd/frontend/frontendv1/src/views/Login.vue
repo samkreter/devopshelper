@@ -17,60 +17,48 @@
 </template>
 
 <script>
-    import AuthService from '../services/auth.service';
     import GraphService from '../services/graph.service';
 
     export default {
         name: 'Login',
-        data() {
-            return {
-                user: null,
-                userInfo: null,
-                apiCallFailed: false,
-                loginFailed: false
-            }
-        },
         created() {
-          this.authService = new AuthService();
           this.graphService = new GraphService();
+            if (this.$store.state.user){
+                this.$router.push({ name: "repositories" });
+            }
         },
         methods: {
             login() {
-              this.loginFailed = false;
-              this.authService.login().then(
+              this.$authService.login().then(
                 user => {
                   if (user) {
-                    console.log("#######: ", user)
-                    this.user = user;
-                    this.callAPI()
+                    this.$authService.getToken().then(
+                        token => {
+                            user.token = token
+                            this.$store.commit("setUser", user)
+                            this.$router.push({ name: "repositories" });
+                            // this.graphService.getUserInfo(token).then(
+                            //     data => {
+                            //         this.$emit("authenticated", data);
+                            //         this.$router.replace({ name: "repositories" });
+                            //     },
+                            //     error => {
+                            //     console.error(error);
+                            //     }
+                            // );
+                        },
+                        error => {
+                            console.error(error);
+                        }
+                    );
                   } else {
-                    this.loginFailed = true;
+                    console.log("Login failed")
                   }
                 },
                 () => {
-                  this.loginFailed = true;
+                  console.log("Login failed")
                 }
               );
-            },
-            callAPI() {
-                this.apiCallFailed = false;
-                this.authService.getToken().then(
-                    token => {
-                    this.graphService.getUserInfo(token).then(
-                        data => {
-                        this.userInfo = data;
-                        },
-                        error => {
-                        console.error(error);
-                        this.apiCallFailed = true;
-                        }
-                    );
-                    },
-                    error => {
-                    console.error(error);
-                    this.apiCallFailed = true;
-                    }
-                );
             }
         }
     }

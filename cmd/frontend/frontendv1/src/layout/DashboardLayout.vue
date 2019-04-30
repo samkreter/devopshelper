@@ -31,7 +31,7 @@
       </template>
     </side-bar>
     <div class="main-content" :data="sidebarBackground">
-      <dashboard-navbar></dashboard-navbar>
+      <dashboard-navbar v-bind:user="user"></dashboard-navbar>
 
       <div @click="toggleSidebar">
         <fade-transition :duration="200" origin="center top" mode="out-in">
@@ -65,7 +65,8 @@
           this.$sidebar.displaySidebar(false);
         }
       }
-    }
+    },
+    props: ["user"]
   };
 </script>
 <style lang="scss">
