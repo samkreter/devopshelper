@@ -1,12 +1,11 @@
 set -e
 
-
-export RESOURCE_GROUP=sakreter-reviewer
-export CLUSTER_NAME=reviewer-staging
-export SUBSCRIPTION_ID=f3b504bb-826e-46c7-a1b7-674a5a0ae43a
-export COSMOSDB_ACCOUNT_NAME=reviewermongo
-export COSMOSDB_DBNAME=reviewerBot
-
+###### Required
+# export RESOURCE_GROUP
+# export CLUSTER_NAME
+# export SUBSCRIPTION_ID
+# export COSMOSDB_ACCOUNT_NAME
+# export COSMOSDB_DBNAME
 
 az account set -s $SUBSCRIPTION_ID
 
