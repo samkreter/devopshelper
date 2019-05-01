@@ -4,14 +4,15 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 
 	"github.com/samkreter/go-core/log"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 	"github.com/samkreter/vstsautoreviewer/pkg/types"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -158,7 +159,7 @@ func (ms *MongoStore) UpdateRepository(ctx context.Context, id string, repositor
 	bsonID := bson.ObjectIdHex(id)
 
 	if err := col.UpdateId(bsonID, repository); err != nil {
-		return err
+		return fmt.Errorf("MongoStore.UpdateRepository: %v", err)
 	}
 
 	return nil

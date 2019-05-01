@@ -1,9 +1,6 @@
 package types
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"log"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -30,12 +27,11 @@ type Repository struct {
 	ID             bson.ObjectId  `json:"id,omitempty" bson:"_id,omitempty"`
 	Created        *time.Time     `json:"created,omitempty" bson:"_created,omitempty"`
 	Updated        *time.Time     `json:"updated,omitempty" bson:"_updated,omitempty"`
-	Name           string         `json:"name" bson:"name"`
-	ProjectName    string         `json:"projectName" bson:"projectName"`
-	ReviewerGroups ReviewerGroups `json:"reviewerGroups" bson:"reviewerGroups"`
-	CurrentPos     map[string]int `json:"-"`
-	Enabled        bool           `json:"enabled" bson:"enabled"`
-	Owners         []string       `json:"owners" bson:"owners"`
+	Name           string         `json:"name" bson:"name,omitempty"`
+	ProjectName    string         `json:"projectName" bson:"projectName,omitempty"`
+	ReviewerGroups ReviewerGroups `json:"reviewerGroups" bson:"reviewerGroups,omitempty"`
+	Enabled        bool           `json:"enabled" bson:"enabled,omitempty"`
+	Owners         []string       `json:"owners" bson:"owners,omitempty"`
 }
 
 // BaseGroup holds the base groups to be added or removed from a repo
@@ -43,9 +39,9 @@ type BaseGroup struct {
 	ID             bson.ObjectId  `json:"_id,omitempty" bson:"_id,omitempty"`
 	Created        *time.Time     `json:"_created,omitempty" bson:"_created,omitempty"`
 	Updated        *time.Time     `json:"_updated,omitempty" bson:"_updated,omitempty"`
-	Name           string         `json:"name"`
-	ReviewerGroups ReviewerGroups `json:"reviewerGroups"`
-	Owners         []string       `json:"owners"`
+	Name           string         `json:"name" bson:"name,omitempty"`
+	ReviewerGroups ReviewerGroups `json:"reviewerGroups" bson:"reviewerGroups,omitempty"`
+	Owners         []string       `json:"owners" bson:"owners,omitempty"`
 }
 
 // ReviewerGroups is a list of type ReviewerGroup
@@ -56,37 +52,17 @@ type ReviewerPositions map[string]int
 
 // ReviewerGroup holds the reviwers and metadata for a review group.
 type ReviewerGroup struct {
-	Group      string      `json:"group"`
-	Required   bool        `json:"required"`
-	Reviewers  []*Reviewer `json:"reviewers"`
-	CurrentPos int
+	Group      string      `json:"group" bson:"group,omitempty"`
+	Required   bool        `json:"required" bson:"required,omitempty"`
+	Reviewers  []*Reviewer `json:"reviewers" bson:"reviewers,omitempty"`
+	CurrentPos int         `json:"currentPos" bson:"currentPos,omitempty"`
 }
 
 // Reviewer is a vsts revier object
 type Reviewer struct {
-	UniqueName string `json:"uniqueName"`
-	Alias      string `json:"alias"`
-	ID         string `json:"id"`
-}
-
-// SavePositions saves the current position
-func (rg *ReviewerGroups) SavePositions(statusFile string) error {
-	reviewerPositions := make(ReviewerPositions)
-	for _, reviewerGroup := range *rg {
-		reviewerPositions[reviewerGroup.Group] = reviewerGroup.CurrentPos
-	}
-
-	data, err := json.Marshal(reviewerPositions)
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(statusFile, data, 0644); err != nil {
-		return err
-	}
-
-	log.Println("INFO: Saving position file.")
-	return nil
+	UniqueName string `json:"uniqueName" bson:"uniqueName,omitempty"`
+	Alias      string `json:"alias" bson:"alias,omitempty"`
+	ID         string `json:"id" bson:"id,omitempty"`
 }
 
 func (g *ReviewerGroup) getCurrentReviewer() *Reviewer {
@@ -100,7 +76,7 @@ func (g *ReviewerGroup) incPos() {
 // GetReviewers gets the required and optional reviewers for a review
 // review: the review summary
 // return: returns a slice of require reviewers and a slice of optional reviewers
-func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) ([]*Reviewer, []*Reviewer, error) {
+func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID string) ([]*Reviewer, []*Reviewer, error) {
 	requiredReviewers := make([]*Reviewer, 0, len(*rg)/2)
 	optionalReviewers := make([]*Reviewer, 0, len(*rg)/2)
 
@@ -110,10 +86,6 @@ func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID, statusFile string) 
 		} else {
 			optionalReviewers = append(optionalReviewers, getNextReviewer(reviewerGroup, pullRequestCreatorID))
 		}
-	}
-
-	if err := rg.SavePositions(statusFile); err != nil {
-		return nil, nil, err
 	}
 
 	return requiredReviewers, optionalReviewers, nil
