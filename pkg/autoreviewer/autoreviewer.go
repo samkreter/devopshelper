@@ -1,6 +1,7 @@
 package autoreviewer
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
+	"github.com/samkreter/vstsautoreviewer/pkg/store"
 	"github.com/samkreter/vstsautoreviewer/pkg/types"
 )
 
@@ -20,14 +22,12 @@ type ReviwerTrigger func([]*types.Reviewer, string) error
 
 // AutoReviewer automaticly adds reviewers to a vsts pull request
 type AutoReviewer struct {
-	Repository       string
 	filters          []Filter
 	reviewerTriggers []ReviwerTrigger
 	vstsClient       *vsts.Client
-	reviewerGroups   types.ReviewerGroups
-	reviewerFile     string
-	statusFile       string
 	botMaker         string
+	Repo             *types.Repository
+	RepoStore        store.RepositoryStore
 }
 
 // ReviewerInfo describes who to be added as a reviwer and which files to watch for
@@ -38,13 +38,13 @@ type ReviewerInfo struct {
 }
 
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(vstsClient *vsts.Client, botMaker string, reviewerGroups types.ReviewerGroups, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
+func NewAutoReviewer(vstsClient *vsts.Client, botMaker string, repo *types.Repository, repoStore store.RepositoryStore, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
 	return &AutoReviewer{
-		Repository:       vstsClient.Repo,
+		Repo:             repo,
+		RepoStore:        repoStore,
 		vstsClient:       vstsClient,
 		filters:          filters,
 		reviewerTriggers: rTriggers,
-		reviewerGroups:   reviewerGroups,
 		botMaker:         botMaker,
 	}, nil
 }
@@ -91,8 +91,13 @@ func (a *AutoReviewer) Run() error {
 
 func (a *AutoReviewer) balanceReview(pullRequest vstsObj.GitPullRequest) error {
 	if !a.ContainsReviewBalancerComment(pullRequest.PullRequestId) {
-		requiredReviewers, optionalReviewers, err := a.reviewerGroups.GetReviewers(pullRequest.CreatedBy.ID, a.statusFile)
+		requiredReviewers, optionalReviewers, err := a.Repo.ReviewerGroups.GetReviewers(pullRequest.CreatedBy.ID)
 		if err != nil {
+			return err
+		}
+
+		// save the repo after pos change
+		if err := a.RepoStore.UpdateRepository(context.TODO(), a.Repo.ID.Hex(), a.Repo); err != nil {
 			return err
 		}
 

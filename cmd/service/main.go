@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -36,12 +35,14 @@ var (
 )
 
 func main() {
-	flag.StringVar(&configFilePath, "config-file", "", "filepath to the configuration file.")
 	flag.StringVar(&serverAddr, "addr", "localhost:8080", "the address for the api server to listen on.")
 	flag.StringVar(&logLvl, "log-level", "info", "the log level for the application")
 
 	flag.StringVar(&conf.Token, "vsts-token", "", "vsts personal access token")
 	flag.StringVar(&conf.Username, "vsts-username", "", "vsts username")
+	flag.StringVar(&conf.BotMaker, "botmaker-id", "b03f5f7f11d50a3a", "identifier for the bot's message")
+	flag.StringVar(&conf.Instance, "vsts-instance", "msazure.visualstudio.com", "vsts instance")
+	flag.StringVar(&conf.APIVersion, "vsts-apiversion", defaultVSTSAPIVersion, "vsts instance")
 
 	flag.StringVar(&admins, "admins", "", "admins to be added to each repo, comma seperated")
 
@@ -50,10 +51,6 @@ func main() {
 	flag.StringVar(&mongoOptions.BaseGroupCollection, "mongo-basegroup-collection", "", "collection that stores the base groups")
 	flag.StringVar(&mongoOptions.DBName, "mongo-dbname", "reviewerBot", "the mongo database to access")
 	flag.BoolVar(&mongoOptions.UseSSL, "mongo-ssl", false, "use ssl when accessing mongo database")
-
-	flag.StringVar(&conf.BotMaker, "botmaker-id", "b03f5f7f11d50a3a", "identifier for the bot's message")
-	flag.StringVar(&conf.Instance, "vsts-instance", "msazure.visualstudio.com", "vsts instance")
-	flag.StringVar(&conf.APIVersion, "vsts-apiversion", defaultVSTSAPIVersion, "vsts instance")
 
 	reviewIntervalMin := flag.Int("review-interval", defaultReviewerIntervalMin, "number of minutes to wait to reviwer")
 	flag.Parse()
@@ -122,9 +119,16 @@ func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf
 		return err
 	}
 
-	aReviewers := make([]*autoreviewer.AutoReviewer, 0, len(repos))
+	enabledRepos := []*types.Repository{}
 	for _, repo := range repos {
-		aReviewer, err := getAutoReviewers(repo, conf)
+		if repo.Enabled {
+			enabledRepos = append(enabledRepos, repo)
+		}
+	}
+
+	aReviewers := make([]*autoreviewer.AutoReviewer, 0, len(repos))
+	for _, repo := range enabledRepos {
+		aReviewer, err := getAutoReviewers(repo, repoStore, conf)
 		if err != nil {
 			logger.Errorf("failed to init reviewer for repo: %s/%s with err: %v", repo.ProjectName, repo.Name, err)
 			continue
@@ -134,18 +138,18 @@ func processReviewers(ctx context.Context, repoStore store.RepositoryStore, conf
 	}
 
 	for _, aReviewer := range aReviewers {
-		logger.Infof("Starting Reviewer for repo: %s\n", aReviewer.Repository)
+		logger.Infof("Starting Reviewer for repo: %s/%s", aReviewer.Repo.ProjectName, aReviewer.Repo.Name)
 		if err := aReviewer.Run(); err != nil {
-			logger.Errorf("Failed to balance repo: %s with err: %v\n", aReviewer.Repository, err)
+			logger.Errorf("Failed to balance repo: %s/%s with err: %v", aReviewer.Repo.ProjectName, aReviewer.Repo.Name, err)
 		}
-		logger.Infof("Finished Balancing Cycle for repo: %s\n", aReviewer.Repository)
+		logger.Infof("Finished Balancing Cycle for: %s/%s", aReviewer.Repo.ProjectName, aReviewer.Repo.Name)
 	}
 
 	logger.Info("Finished Reviewing for all repositories")
 	return nil
 }
 
-func getAutoReviewers(repo *types.Repository, conf *config.Config) (*autoreviewer.AutoReviewer, error) {
+func getAutoReviewers(repo *types.Repository, repoStore store.RepositoryStore, conf *config.Config) (*autoreviewer.AutoReviewer, error) {
 	vstsConfig := &vsts.Config{
 		Token:          conf.Token,
 		Username:       conf.Username,
@@ -154,10 +158,6 @@ func getAutoReviewers(repo *types.Repository, conf *config.Config) (*autoreviewe
 		Project:        repo.ProjectName,
 		Instance:       conf.Instance,
 	}
-
-	fmt.Printf("VSTSCONFIG: %+v\n", vstsConfig)
-	fmt.Println("############")
-	fmt.Printf("REPO: %+v\n", repo)
 
 	vstsClient, err := vsts.NewClient(vstsConfig)
 	if err != nil {
@@ -182,7 +182,7 @@ func getAutoReviewers(repo *types.Repository, conf *config.Config) (*autoreviewe
 		}
 	}
 
-	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, conf.BotMaker, repo.ReviewerGroups, filters, reviewerTriggers)
+	aReviewer, err := autoreviewer.NewAutoReviewer(vstsClient, conf.BotMaker, repo, repoStore, filters, reviewerTriggers)
 	if err != nil {
 		return nil, err
 	}
