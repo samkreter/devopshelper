@@ -3,7 +3,7 @@
 REVIEWER_REPO="pskreter/vstsreviewer:1.0.12"
 TEST_SERVICE_REPO="pskreter/reviewer-service-test:0.0.9"
 
-SERVICE_REPO="pskreter/reviewer-service:0.0.7-alpha"
+SERVICE_REPO="pskreter/reviewer-service:0.0.13-alpha"
 FRONTEND_REPO="pskreter/reviewer-frontend:0.0.3"
 
 

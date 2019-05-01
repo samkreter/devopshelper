@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -45,6 +46,8 @@ func main() {
 	flag.StringVar(&admins, "admins", "", "admins to be added to each repo, comma seperated")
 
 	flag.StringVar(&mongoOptions.MongoURI, "mongo-uri", "", "connection string for the mongo database")
+	flag.StringVar(&mongoOptions.RepositoryCollection, "mongo-repo-collection", "", "collection that stores the repositories")
+	flag.StringVar(&mongoOptions.BaseGroupCollection, "mongo-basegroup-collection", "", "collection that stores the base groups")
 	flag.StringVar(&mongoOptions.DBName, "mongo-dbname", "reviewerBot", "the mongo database to access")
 	flag.BoolVar(&mongoOptions.UseSSL, "mongo-ssl", false, "use ssl when accessing mongo database")
 
@@ -151,6 +154,10 @@ func getAutoReviewers(repo *types.Repository, conf *config.Config) (*autoreviewe
 		Project:        repo.ProjectName,
 		Instance:       conf.Instance,
 	}
+
+	fmt.Printf("VSTSCONFIG: %+v\n", vstsConfig)
+	fmt.Println("############")
+	fmt.Printf("REPO: %+v\n", repo)
 
 	vstsClient, err := vsts.NewClient(vstsConfig)
 	if err != nil {

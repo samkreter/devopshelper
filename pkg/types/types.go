@@ -30,12 +30,12 @@ type Repository struct {
 	ID             bson.ObjectId  `json:"id,omitempty" bson:"_id,omitempty"`
 	Created        *time.Time     `json:"created,omitempty" bson:"_created,omitempty"`
 	Updated        *time.Time     `json:"updated,omitempty" bson:"_updated,omitempty"`
-	Name           string         `json:"name"`
-	ProjectName    string         `json:"projectName"`
-	ReviewerGroups ReviewerGroups `json:"reviewerGroups"`
+	Name           string         `json:"name" bson:"name"`
+	ProjectName    string         `json:"projectName" bson:"projectName"`
+	ReviewerGroups ReviewerGroups `json:"reviewerGroups" bson:"reviewerGroups"`
 	CurrentPos     map[string]int `json:"-"`
-	Enabled        bool           `json:"enabled"`
-	Owners         []string       `json:"owners"`
+	Enabled        bool           `json:"enabled" bson:"enabled"`
+	Owners         []string       `json:"owners" bson:"owners"`
 }
 
 // BaseGroup holds the base groups to be added or removed from a repo
