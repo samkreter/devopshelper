@@ -47,9 +47,11 @@ var _ RepositoryStore = &MongoStore{}
 
 // MongoStoreOptions options for a mongo store
 type MongoStoreOptions struct {
-	UseSSL   bool
-	MongoURI string
-	DBName   string
+	UseSSL               bool
+	MongoURI             string
+	DBName               string
+	RepositoryCollection string
+	BaseGroupCollection  string
 }
 
 // MongoStore implementation to interact with a mongo database
@@ -74,6 +76,14 @@ func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
 
 	if o.MongoURI == "" {
 		return nil, errors.New("missing Mongo connection string")
+	}
+
+	if o.RepositoryCollection == "" {
+		o.RepositoryCollection = defaultRepositoryCollectionName
+	}
+
+	if o.BaseGroupCollection == "" {
+		o.BaseGroupCollection = defaultBaseGroupCollectionName
 	}
 
 	logger.Infof("Using DB: '%s' for mongo.", o.DBName)
@@ -130,7 +140,7 @@ func (ms *MongoStore) getCollection(collection string) (*mgo.Session, *mgo.Colle
 
 // AddRepository adds a repository to the mongo database
 func (ms *MongoStore) AddRepository(ctx context.Context, repo *types.Repository) error {
-	session, col := ms.getCollection(defaultRepositoryCollectionName)
+	session, col := ms.getCollection(ms.Options.RepositoryCollection)
 	defer session.Close()
 
 	if err := col.Insert(repo); err != nil {
@@ -142,7 +152,7 @@ func (ms *MongoStore) AddRepository(ctx context.Context, repo *types.Repository)
 
 // UpdateRepository updates a repository in the database
 func (ms *MongoStore) UpdateRepository(ctx context.Context, id string, repository *types.Repository) error {
-	session, col := ms.getCollection(defaultRepositoryCollectionName)
+	session, col := ms.getCollection(ms.Options.RepositoryCollection)
 	defer session.Close()
 
 	bsonID := bson.ObjectIdHex(id)
@@ -156,7 +166,7 @@ func (ms *MongoStore) UpdateRepository(ctx context.Context, id string, repositor
 
 // DeleteRepository deletes a reposotory from the database
 func (ms *MongoStore) DeleteRepository(ctx context.Context, id string) error {
-	session, col := ms.getCollection(defaultRepositoryCollectionName)
+	session, col := ms.getCollection(ms.Options.RepositoryCollection)
 	defer session.Close()
 
 	bsonID := bson.ObjectIdHex(id)
@@ -170,7 +180,7 @@ func (ms *MongoStore) DeleteRepository(ctx context.Context, id string) error {
 
 // GetRepositoryByID retrieves a repository by it's ID
 func (ms *MongoStore) GetRepositoryByID(ctx context.Context, id string) (*types.Repository, error) {
-	session, col := ms.getCollection(defaultRepositoryCollectionName)
+	session, col := ms.getCollection(ms.Options.RepositoryCollection)
 	defer session.Close()
 
 	bsonID := bson.ObjectIdHex(id)
@@ -189,7 +199,7 @@ func (ms *MongoStore) GetRepositoryByID(ctx context.Context, id string) (*types.
 
 // GetAllRepositories Retrives all repositories
 func (ms *MongoStore) GetAllRepositories(ctx context.Context) ([]*types.Repository, error) {
-	session, col := ms.getCollection(defaultRepositoryCollectionName)
+	session, col := ms.getCollection(ms.Options.RepositoryCollection)
 	defer session.Close()
 
 	var repos []*types.Repository
@@ -207,7 +217,7 @@ func (ms *MongoStore) GetAllRepositories(ctx context.Context) ([]*types.Reposito
 
 // GetRepositoryByName gets a repository by it's name
 func (ms *MongoStore) GetRepositoryByName(ctx context.Context, name, project string) (*types.Repository, error) {
-	session, col := ms.getCollection(defaultRepositoryCollectionName)
+	session, col := ms.getCollection(ms.Options.RepositoryCollection)
 	defer session.Close()
 
 	var repo types.Repository
@@ -224,7 +234,7 @@ func (ms *MongoStore) GetRepositoryByName(ctx context.Context, name, project str
 
 // AddBaseGroup adds a base group into the database
 func (ms *MongoStore) AddBaseGroup(ctx context.Context, name string, group *types.BaseGroup) error {
-	session, col := ms.getCollection(defaultBaseGroupCollectionName)
+	session, col := ms.getCollection(ms.Options.BaseGroupCollection)
 	defer session.Close()
 
 	if err := col.Insert(group); err != nil {
@@ -236,7 +246,7 @@ func (ms *MongoStore) AddBaseGroup(ctx context.Context, name string, group *type
 
 // UpdateBaseGroup updates a base group in the database
 func (ms *MongoStore) UpdateBaseGroup(ctx context.Context, id string, group *types.BaseGroup) error {
-	session, col := ms.getCollection(defaultBaseGroupCollectionName)
+	session, col := ms.getCollection(ms.Options.BaseGroupCollection)
 	defer session.Close()
 
 	bsonID := bson.ObjectIdHex(id)
@@ -250,7 +260,7 @@ func (ms *MongoStore) UpdateBaseGroup(ctx context.Context, id string, group *typ
 
 // DeleteBaseGroup deletes a base group from the database
 func (ms *MongoStore) DeleteBaseGroup(ctx context.Context, id string) error {
-	session, col := ms.getCollection(defaultBaseGroupCollectionName)
+	session, col := ms.getCollection(ms.Options.BaseGroupCollection)
 	defer session.Close()
 
 	bsonID := bson.ObjectIdHex(id)
@@ -264,7 +274,7 @@ func (ms *MongoStore) DeleteBaseGroup(ctx context.Context, id string) error {
 
 // GetBaseGroupByName get a basegroup by name
 func (ms *MongoStore) GetBaseGroupByName(ctx context.Context, name string) (*types.BaseGroup, error) {
-	session, col := ms.getCollection(defaultBaseGroupCollectionName)
+	session, col := ms.getCollection(ms.Options.BaseGroupCollection)
 	defer session.Close()
 
 	var group types.BaseGroup
@@ -281,7 +291,7 @@ func (ms *MongoStore) GetBaseGroupByName(ctx context.Context, name string) (*typ
 
 // GetAllBaseGroups gets all available base groups
 func (ms *MongoStore) GetAllBaseGroups(ctx context.Context) ([]*types.BaseGroup, error) {
-	session, col := ms.getCollection(defaultRepositoryCollectionName)
+	session, col := ms.getCollection(ms.Options.RepositoryCollection)
 	defer session.Close()
 
 	var groups []*types.BaseGroup

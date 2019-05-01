@@ -23,6 +23,8 @@ apiserver:
   token: <insert-token-here>
   username: sakreter
   mongouri: <insert-mongo-uri>
+  repoCollection: ""
+  baseGroupCollection: ""
   loglevel: debug
   dbname: reviewerBot
   admins: sakreter@microsoft.com,Samuel.Kreter@microsoft.com
