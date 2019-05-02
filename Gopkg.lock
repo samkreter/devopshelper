@@ -83,8 +83,15 @@
   version = "v0.8.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:3662a0b0aad6008be773d883f8167570b9dc1610791e9c4c3558a20c2f673b87"
+  digest = "1:b0c25f00bad20d783d259af2af8666969e2fc343fa0dc9efe52936bbd67fb758"
+  name = "github.com/rs/cors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "9a47f48565a795472d43519dd49aac781f3034fb"
+  version = "v1.6.0"
+
+[[projects]]
+  digest = "1:b2a742267852f030244426213af1bf465b23ef1840195e132e80e5835da75683"
   name = "github.com/samkreter/go-core"
   packages = [
     "correlation",
@@ -92,7 +99,7 @@
     "log",
   ]
   pruneopts = "UT"
-  revision = "8618e318e2489ab2e6da968a3e01daab8b3e70da"
+  revision = "5628b97ea62b282f6c0300f3e522fdb04c84167c"
 
 [[projects]]
   digest = "1:f48869c7afecec43bc786bd5f724235f57bd44e98b2cc668cb82ff63ceb7fff6"
@@ -192,17 +199,6 @@
   revision = "54a98f90d1c46b7731eb8fb305d2a321c30ef610"
   version = "v1.5.0"
 
-[[projects]]
-  branch = "v2"
-  digest = "1:2642fd0b6900c77247d61d80cf2eb59a374ef4ffc2d25a1b95b87dc355b2894e"
-  name = "gopkg.in/mgo.v2"
-  packages = [
-    "bson",
-    "internal/json",
-  ]
-  pruneopts = "UT"
-  revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
@@ -211,11 +207,11 @@
     "github.com/globalsign/mgo/bson",
     "github.com/gorilla/mux",
     "github.com/nlopes/slack",
+    "github.com/rs/cors",
     "github.com/samkreter/go-core/httputil",
     "github.com/samkreter/go-core/log",
     "github.com/samkreter/vsts-goclient/api/git",
     "github.com/samkreter/vsts-goclient/client",
-    "gopkg.in/mgo.v2/bson",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

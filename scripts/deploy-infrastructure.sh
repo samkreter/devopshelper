@@ -9,20 +9,23 @@ set -e
 
 az account set -s $SUBSCRIPTION_ID
 
-########### Create an aks cluster ############
+########### AKS Cluster Setup ############
 echo "Deploying AKS cluster: ${CLUSTER_NAME}....."
 az aks create -g $RESOURCE_GROUP -n $CLUSTER_NAME --node-count 2
 
 echo "Adding kubeconfig...."
 az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME
 
-########### Install Helm's Tiller server ############
+# Install Helm's Tiller server
 kubectl apply -f ./deployFiles/helm-rbac.yaml
 
 helm init --service-account tiller
 
+# Creating TLS Ingress Controller
+helm install stable/nginx-ingress --namespace kube-system --set controller.replicaCount=2
 
-########### Create an cosmosdb mongo ############
+
+########### CosmosDB Setup ############
 echo "Creating cosmosdb server: ${COSMOSDB_ACCOUNT_NAME}..."
 az cosmosdb create \
     --resource-group $RESOURCE_GROUP \

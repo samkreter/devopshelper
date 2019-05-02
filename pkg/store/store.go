@@ -87,7 +87,10 @@ func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
 		o.BaseGroupCollection = defaultBaseGroupCollectionName
 	}
 
-	logger.Infof("Using DB: '%s' for mongo.", o.DBName)
+	logger.Infof("MongoStore: Using DB: '%s' for mongo with RepoCollection: %s, BaseGroupCollection: %s",
+		o.DBName,
+		o.RepositoryCollection,
+		o.BaseGroupCollection)
 
 	var session *mgo.Session
 	var err error

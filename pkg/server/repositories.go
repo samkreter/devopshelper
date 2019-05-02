@@ -707,7 +707,7 @@ func httpError(ctx context.Context, w http.ResponseWriter, msg string, code int)
 
 func (s *Server) userHasWritePermission(user *types.GraphUser, owners []string) bool {
 	// Allow full access for admins
-	if contains(s.Admins, user.Mail) {
+	if contains(s.Options.Admins, user.Mail) {
 		return true
 	}
 

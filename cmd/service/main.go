@@ -25,17 +25,21 @@ const (
 
 var (
 	configFilePath string
-	admins         string
+	adminsStr      string
+	enableCORS     bool
 	vstsToken      string
 	vstsUsername   string
-	serverAddr     string
 	logLvl         string
 	conf           = &config.Config{}
 	mongoOptions   = &store.MongoStoreOptions{}
+	serverOptions  = &server.Options{}
 )
 
 func main() {
-	flag.StringVar(&serverAddr, "addr", "localhost:8080", "the address for the api server to listen on.")
+	flag.StringVar(&serverOptions.Addr, "addr", "localhost:8080", "the address for the api server to listen on.")
+	flag.StringVar(&adminsStr, "admins", "", "admins to be added to each repo, comma seperated")
+	flag.BoolVar(&serverOptions.AllowCORS, "enable-cors", true, "enable cors for the api server.")
+
 	flag.StringVar(&logLvl, "log-level", "info", "the log level for the application")
 
 	flag.StringVar(&conf.Token, "vsts-token", "", "vsts personal access token")
@@ -43,8 +47,6 @@ func main() {
 	flag.StringVar(&conf.BotMaker, "botmaker-id", "b03f5f7f11d50a3a", "identifier for the bot's message")
 	flag.StringVar(&conf.Instance, "vsts-instance", "msazure.visualstudio.com", "vsts instance")
 	flag.StringVar(&conf.APIVersion, "vsts-apiversion", defaultVSTSAPIVersion, "vsts instance")
-
-	flag.StringVar(&admins, "admins", "", "admins to be added to each repo, comma seperated")
 
 	flag.StringVar(&mongoOptions.MongoURI, "mongo-uri", "", "connection string for the mongo database")
 	flag.StringVar(&mongoOptions.RepositoryCollection, "mongo-repo-collection", "", "collection that stores the repositories")
@@ -70,7 +72,7 @@ func main() {
 		}
 	}
 
-	adminsSplit := strings.Split(admins, ",")
+	serverOptions.Admins = strings.Split(adminsStr, ",")
 
 	repoStore, err := store.NewMongoStore(mongoOptions)
 	if err != nil {
@@ -103,7 +105,7 @@ func main() {
 		}
 	}()
 
-	s, err := server.NewServer(serverAddr, vstsClient, repoStore, adminsSplit)
+	s, err := server.NewServer(vstsClient, repoStore, serverOptions)
 	if err != nil {
 		logger.Fatal(err)
 	}
