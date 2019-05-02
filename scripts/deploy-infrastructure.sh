@@ -16,6 +16,11 @@ az aks create -g $RESOURCE_GROUP -n $CLUSTER_NAME --node-count 2
 echo "Adding kubeconfig...."
 az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME
 
+########### Install Helm's Tiller server ############
+kubectl apply -f ./deployFiles/helm-rbac.yaml
+
+helm init --service-account tiller
+
 
 ########### Create an cosmosdb mongo ############
 echo "Creating cosmosdb server: ${COSMOSDB_ACCOUNT_NAME}..."
