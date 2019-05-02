@@ -1,18 +1,16 @@
 set -e
 
 
-
-########### Creating TLS Ingress Controller ############
-helm install stable/nginx-ingress --namespace kube-system --set controller.replicaCount=2
-
-
 ########### Add dns for the IP ##########
-IP="<get Ingress IP Address>"
-# Name to associate with public IP address
-DNSNAME="devops-reviewer"
+## REQUIRED VARS
+# IP
+# DNSNAME
+
+
 # Get the resource-id of the public ip
 PUBLICIPID=$(az network public-ip list --query "[?ipAddress!=null]|[?contains(ipAddress, '$IP')].[id]" --output tsv)
 # Update public ip address with DNS name
+echo "Updating public IP with DNS name: ${DNSNAME}"
 az network public-ip update --ids $PUBLICIPID --dns-name $DNSNAME
 
 
@@ -28,8 +26,9 @@ helm install stable/cert-manager \
     --set ingressShim.defaultIssuerKind=ClusterIssuer \
     --version v0.6.6
 
+## NOTE: fill in fqdn in the certificates.yaml file and email in cluster-issuer
 ## Create the cluster issuer resource
-kubectl apply -f cluster-issuer.yaml
+kubectl apply -f ./deployFiles/cluster-issuer.yaml
 
 ## Create a certificate resource 
-kubectl apply -f certificates.yaml
+kubectl apply -f ./deployFiles/certificates.yaml

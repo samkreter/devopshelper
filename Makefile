@@ -49,12 +49,12 @@ run-apiserver: build-apiserver
 	docker run -p 8080:8080 ${SERVICE_REPO} --vsts-token ${VSTS_TOKEN} --vsts-username ${VSTS_USERNAME} --mongo-uri ${MONGO_URI} --log-level debug
 
 
-apiserver-deploy: push-apiserver
+apiserver-deploy:
 	helm install --name apiserver ./charts/apiserver --set apiserver.token=${VSTS_TOKEN} \
 		--set apiserver.username=${VSTS_USERNAME} --set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${SERVICE_REPO}
 
-apiserver-upgrade: push-apiserver
+apiserver-upgrade:
 	helm upgrade --set apiserver.token=${VSTS_TOKEN} \
 		--set apiserver.username=${VSTS_USERNAME} --set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${SERVICE_REPO} apiserver ./charts/apiserver
