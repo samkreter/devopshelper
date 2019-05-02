@@ -1,11 +1,5 @@
-
 set -e
 
-
-########### Install Helm's Tiller server ############
-kubectl apply -f ./deployFiles/helm-rbac.yaml
-
-helm init --service-account tiller
 
 
 ########### Creating TLS Ingress Controller ############
@@ -39,4 +33,3 @@ kubectl apply -f cluster-issuer.yaml
 
 ## Create a certificate resource 
 kubectl apply -f certificates.yaml
-
