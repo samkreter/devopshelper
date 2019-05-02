@@ -23,6 +23,8 @@ apiserver:
   mongouri: <insert-mongo-uri>
   loglevel: debug
   dbname: reviewerBotTest
+  repoCollection: testRepo
+  baseGroupCollection: testBaseGroup
   admins: sakreter@microsoft.com,Samuel.Kreter@microsoft.com
 
 ingress:
