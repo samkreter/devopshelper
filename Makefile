@@ -3,7 +3,7 @@
 REVIEWER_REPO="pskreter/vstsreviewer:1.0.12"
 TEST_SERVICE_REPO="pskreter/reviewer-service-test:0.0.17"
 
-SERVICE_REPO="pskreter/reviewer-service:0.0.14-alpha"
+SERVICE_REPO="pskreter/reviewer-service:0.0.17-alpha"
 FRONTEND_REPO="pskreter/reviewer-frontend:0.0.3"
 
 
@@ -56,6 +56,7 @@ apiserver-deploy:
 
 apiserver-upgrade:
 	helm upgrade --set apiserver.token=${VSTS_TOKEN} \
+		--reuse-values \
 		--set apiserver.username=${VSTS_USERNAME} --set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${SERVICE_REPO} apiserver ./charts/apiserver
 

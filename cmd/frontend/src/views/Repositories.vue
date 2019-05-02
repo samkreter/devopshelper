@@ -76,10 +76,21 @@
 </template>
 <script>
   import ProjectsTable from './Tables/ProjectsTable'
+  import axios from 'axios'
   export default {
     name: 'repositories',
     components: {
       ProjectsTable
+    },
+    created(){
+        axios.get('https://devopshelper.eastus.cloudapp.azure.com/api', {
+            headers: {
+                'Authorization': 'Bearer ' + this.$store.state.user.token,
+                'Access-Control-Allow-Origin': 'http://localhost:8080',
+            }
+        })
+        .then(response => alert(response.data))
+        .catch(error => console.log("####", error))
     }
   };
 </script>

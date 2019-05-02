@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors"
 	"github.com/samkreter/go-core/httputil"
 	"github.com/samkreter/go-core/log"
 	vsts "github.com/samkreter/vsts-goclient/client"
@@ -26,29 +27,34 @@ const (
 	GraphURI = "https://graph.microsoft.com/v1.0/me"
 )
 
+// Options to for starter the apiserver
+type Options struct {
+	AllowCORS bool
+	Addr      string
+	Admins    []string
+}
+
 // Server holds configuration for the server
 type Server struct {
-	Addr       string
-	Admins     []string
 	vstsClient *vsts.Client
 	httpClient *http.Client
 	RepoStore  store.RepositoryStore
+	Options    *Options
 }
 
 // NewServer creates a new server
-func NewServer(addr string, vstsClient *vsts.Client, repoStore store.RepositoryStore, admins []string) (*Server, error) {
-	if addr == "" {
-		addr = defaultAddr
+func NewServer(vstsClient *vsts.Client, repoStore store.RepositoryStore, o *Options) (*Server, error) {
+	if o.Addr == "" {
+		o.Addr = defaultAddr
 	}
 
-	log.G(context.TODO()).Infof("Adding admins: '%s'", strings.Join(admins, ", "))
+	log.G(context.TODO()).Infof("Adding admins: '%s'", strings.Join(o.Admins, ", "))
 
 	return &Server{
-		Admins:     admins,
 		vstsClient: vstsClient,
-		Addr:       addr,
 		RepoStore:  repoStore,
 		httpClient: httputil.NewHTTPClient(true, true, true),
+		Options:    o,
 	}, nil
 }
 
@@ -85,16 +91,23 @@ func (s *Server) Run() {
 	router.HandleFunc("/api/projects/{project}/repositories/{repository}/disable", s.DisableRepository).Methods("POST")
 
 	// Add authentication handler
-	authRouter := AuthMiddleware(router)
+	handler := AuthMiddleware(router)
 
-	tracingRouter := httputil.SetUpHandler(authRouter, &httputil.HandlerConfig{
+	handler = httputil.SetUpHandler(handler, &httputil.HandlerConfig{
 		CorrelationEnabled: true,
 		LoggingEnabled:     true,
 		TracingEnabled:     true,
 	})
 
-	log.G(context.TODO()).WithField("address: ", s.Addr).Info("Starting Frontend Server:")
-	log.G(context.TODO()).Fatal(http.ListenAndServe(s.Addr, tracingRouter))
+	// allow cors, for frontend access
+	// TODO: make cors more restrivtive
+	if s.Options.AllowCORS {
+		log.G(context.TODO()).Info("Enabling CORS")
+		handler = cors.AllowAll().Handler(handler)
+	}
+
+	log.G(context.TODO()).WithField("address: ", s.Options.Addr).Info("Starting Frontend Server:")
+	log.G(context.TODO()).Fatal(http.ListenAndServe(s.Options.Addr, handler))
 }
 
 // AuthMiddleware only allows users in the security group and adds the user into the request context

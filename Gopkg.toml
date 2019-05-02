@@ -27,10 +27,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/antihax/optional"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/globalsign/mgo"
 
 [[constraint]]
@@ -42,7 +38,7 @@
   version = "0.5.0"
 
 [[constraint]]
-  branch = "master"
+  revision = "5628b97ea62b282f6c0300f3e522fdb04c84167c"
   name = "github.com/samkreter/go-core"
 
 [[constraint]]
@@ -50,8 +46,8 @@
   version = "0.0.3"
 
 [[constraint]]
-  branch = "v2"
-  name = "gopkg.in/mgo.v2"
+  name = "github.com/rs/cors"
+  version = "1.6.0"
 
 [prune]
   go-tests = true
