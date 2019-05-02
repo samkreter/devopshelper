@@ -19,12 +19,12 @@ service:
 apiserver:
   image: <placeholder-image>
   pullPolicy: Always
-  address: "0.0.0.0:80"
+  address: 0.0.0.0:80
   token: <insert-token-here>
   username: sakreter
   mongouri: <insert-mongo-uri>
   repoCollection: prodRepo
-  baseGroupCollection: "prodBaseGroup"
+  baseGroupCollection: prodBaseGroup
   loglevel: debug
   dbname: reviewerBot
   admins: sakreter@microsoft.com,Samuel.Kreter@microsoft.com
