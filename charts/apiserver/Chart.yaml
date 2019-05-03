@@ -2,4 +2,4 @@ apiVersion: v1
 appVersion: "1.0"
 description: Dev Ops Reviewer automaticaly assigns reviewers to specific PRs
 name: apiserver
-version: 0.1.0
+version: 0.1.1

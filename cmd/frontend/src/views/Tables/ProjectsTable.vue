@@ -77,7 +77,7 @@
 
     <div class="card-footer d-flex justify-content-end"
          :class="type === 'dark' ? 'bg-transparent': ''">
-      <base-pagination total="30"></base-pagination>
+      <base-pagination :total=30></base-pagination>
     </div>
 
   </div>
@@ -89,35 +89,38 @@
       type: {
         type: String
       },
-      title: String
-    },
-    data() {
-      return {
-        tableData: [
-          {
-            name: 'aks-rp',
-            projectName: 'CloudNativeCompute',
-            owners: ["sakreter","anderliu"],
-            status: 'enabled',
-            statusType: 'success'
-          },
-          {
-            name: 'aks-overlaymgr',
-            projectName: 'CloudNativeCompute',
-            owners: ["tester","sakreter","anderliu"],
-            status: 'disabled',
-            statusType: 'danger'
-          },
-          {
-            name: 'acsrp',
-            projectName: 'CloudNativeCompute',
-            owners: ["sakreter","anderliu"],
-            status: 'enabled',
-            statusType: 'success'
-          }
-        ]
+      title: String,
+      tableData: {
+        type: []
       }
     }
+    // data() {
+    //   return {
+    //     tableData: [
+    //       {
+    //         name: 'aks-rp',
+    //         projectName: 'CloudNativeCompute',
+    //         owners: ["sakreter","anderliu"],
+    //         status: 'enabled',
+    //         statusType: 'success'
+    //       },
+    //       {
+    //         name: 'aks-overlaymgr',
+    //         projectName: 'CloudNativeCompute',
+    //         owners: ["tester","sakreter","anderliu"],
+    //         status: 'disabled',
+    //         statusType: 'danger'
+    //       },
+    //       {
+    //         name: 'acsrp',
+    //         projectName: 'CloudNativeCompute',
+    //         owners: ["sakreter","anderliu"],
+    //         status: 'enabled',
+    //         statusType: 'success'
+    //       }
+    //     ]
+    //   }
+    // }
   }
 </script>
 <style>
