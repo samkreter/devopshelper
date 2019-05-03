@@ -81,7 +81,7 @@
                             :class="type === 'dark' ? 'table-dark': ''"
                             :thead-classes="type === 'dark' ? 'thead-dark': 'thead-light'"
                             tbody-classes="list"
-                            :data="tableData">
+                            :data="reposToDisplay">
                     <template slot="columns">
                     <th>Repository Name</th>
                     <th>Project Name</th>
@@ -145,7 +145,7 @@
 
                 <div class="card-footer d-flex justify-content-end"
                     :class="type === 'dark' ? 'bg-transparent': ''">
-                <base-pagination  :perPage=4 :total=10></base-pagination>
+                <base-pagination @input="changePage" :value=currentPage :perPage=reposPerPage :total=repositories.length></base-pagination>
                 </div>
 
             </div>
@@ -160,8 +160,11 @@
     name: 'repositories',
     data: function () {
         return {
-            tableData: [],
-            type: "hello"
+            repositories: [],
+            reposToDisplay: [],
+            type: "hello",
+            reposPerPage: 5,
+            currentPage: 1,
         }
     },
     components: {
@@ -173,11 +176,15 @@
                 'Authorization': 'Bearer ' + this.$store.state.user.token
             }
         })
-        .then(response => {
-            console.log(response.data)
-            this.tableData = response.data
-        })
+        .then(response => this.repositories = response.data)
         .catch(error => console.log(error))
+    },
+    methods: {
+        changePage(pageNumber){
+            let startIndex = this.reposPerPage * (pageNumber - 1)
+            this.reposToDisplay = this.repositories.slice(startIndex, startIndex+5)
+            this.currentPage = pageNumber
+        }
     }
   };
 </script>
