@@ -83,7 +83,7 @@
       ProjectsTable
     },
     created(){
-        axios.get('https://devopshelper.eastus.cloudapp.azure.com/api', {
+        axios.get('https://devopshelper.eastus.cloudapp.azure.com/api/repositories', {
             headers: {
                 'Authorization': 'Bearer ' + this.$store.state.user.token,
                 'Access-Control-Allow-Origin': 'http://localhost:8080',

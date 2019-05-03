@@ -9,6 +9,7 @@ export const store = new Vuex.Store({
     },
     mutations: {
         setUser(state, user){
+            user.storedTime = new Date().getTime();
             localStorage.setItem("currUser", JSON.stringify(user))
             state.user = user
         },
@@ -25,5 +26,13 @@ function getUserFromLocal(){
         return null
     }
 
-    return JSON.parse(userStr)
+    let user = JSON.parse(userStr)
+
+    // Timeout if token has been in store longer than 30 mintues
+    if ((new Date()) - new Date(user.storedTime) > (30 * 60000)) {
+        localStorage.removeItem("currUser")
+        return null
+    }
+
+    return user
 }
