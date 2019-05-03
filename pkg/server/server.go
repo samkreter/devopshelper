@@ -89,6 +89,7 @@ func (s *Server) Run() {
 	// Enable
 	router.HandleFunc("/api/projects/{project}/repositories/{repository}/enable", s.EnableRepository).Methods("POST")
 	router.HandleFunc("/api/projects/{project}/repositories/{repository}/disable", s.DisableRepository).Methods("POST")
+	router.PathPrefix("/").HandlerFunc(s.catchAllHandler)
 
 	// Add authentication handler
 	handler := AuthMiddleware(router)
@@ -110,17 +111,20 @@ func (s *Server) Run() {
 	log.G(context.TODO()).Fatal(http.ListenAndServe(s.Options.Addr, handler))
 }
 
+func (s *Server) catchAllHandler(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "API route not found.")
+}
+
 // AuthMiddleware only allows users in the security group and adds the user into the request context
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		authHeader := req.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, "no Authorization header found", http.StatusBadRequest)
+			http.Error(w, "no Authorization header found", http.StatusUnauthorized)
 			return
 		}
 
 		ctx := req.Context()
-
 		logger := log.G(ctx)
 
 		user, err := getAuthenticatedUser(authHeader)
