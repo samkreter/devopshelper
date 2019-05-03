@@ -21,16 +21,15 @@ ingress:
   annotations:
     kubernetes.io/ingress.class: nginx
     certmanager.k8s.io/cluster-issuer: letsencrypt-staging
-    nginx.ingress.kubernetes.io/rewrite-target: /
     # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: devops-reviewer.eastus.cloudapp.azure.com
+    - host: devopshelper.eastus.cloudapp.azure.com
       paths: 
         - /
   tls:
    - secretName: tls-secret
      hosts:
-       - devops-reviewer.eastus.cloudapp.azure.com
+       - devopshelper.eastus.cloudapp.azure.com
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
