@@ -32,6 +32,15 @@ export default new Router({
           }
         },
         {
+          path: '/repository',
+          name: 'repository',
+          component: () => import( './views/Repository.vue'),
+          props: true,
+          meta: {
+            requiresAuth: true
+          }
+        },
+        {
           path: '/dashboard',
           name: 'dashboard',
           // route level code-splitting
