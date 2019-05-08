@@ -4,7 +4,7 @@ REVIEWER_REPO="pskreter/vstsreviewer:1.0.12"
 TEST_SERVICE_REPO="pskreter/reviewer-service-test:0.0.17"
 
 SERVICE_REPO="pskreter/reviewer-service:0.0.20-alpha"
-FRONTEND_REPO="pskreter/reviewer-frontend:0.0.4"
+FRONTEND_REPO="pskreter/reviewer-frontend:0.0.6"
 
 
 deploy:
