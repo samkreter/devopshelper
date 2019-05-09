@@ -87,7 +87,7 @@
                 <ul class="navbar-nav mb-md-3">
                     <li class="nav-item">
                         <a class="nav-link"
-                           href="https://github.com/samkreter/VSTSAutoReviewer/blob/master/README.md">
+                           href="https://github.com/samkreter/devopshelper/blob/master/README.md">
                             <i class="ni ni-spaceship"></i> Getting started
                         </a>
                     </li>

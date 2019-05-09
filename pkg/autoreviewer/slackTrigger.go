@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/samkreter/vstsautoreviewer/pkg/triggers/slack"
-	"github.com/samkreter/vstsautoreviewer/pkg/types"
+	"github.com/samkreter/devopshelper/pkg/triggers/slack"
+	"github.com/samkreter/devopshelper/pkg/types"
 )
 
 const (

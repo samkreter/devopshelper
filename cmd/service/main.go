@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samkreter/vstsautoreviewer/pkg/autoreviewer"
-	"github.com/samkreter/vstsautoreviewer/pkg/config"
-	"github.com/samkreter/vstsautoreviewer/pkg/server"
-	"github.com/samkreter/vstsautoreviewer/pkg/store"
-	"github.com/samkreter/vstsautoreviewer/pkg/types"
+	"github.com/samkreter/devopshelper/pkg/autoreviewer"
+	"github.com/samkreter/devopshelper/pkg/config"
+	"github.com/samkreter/devopshelper/pkg/server"
+	"github.com/samkreter/devopshelper/pkg/store"
+	"github.com/samkreter/devopshelper/pkg/types"
 
 	"github.com/samkreter/go-core/log"
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"

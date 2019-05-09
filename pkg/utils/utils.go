@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/samkreter/vstsautoreviewer/pkg/types"
+	"github.com/samkreter/devopshelper/pkg/types"
 )
 
 const (
