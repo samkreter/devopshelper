@@ -50,22 +50,22 @@ export default new Router({
           meta: {
             requiresAuth: true
           }
+        },
+        {
+          path: '/icons',
+          name: 'icons',
+          component: () => import(/* webpackChunkName: "demo" */ './views/Icons.vue')
+        },
+        {
+          path: '/profile',
+          name: 'profile',
+          component: () => import(/* webpackChunkName: "demo" */ './views/UserProfile.vue')
+        },
+        {
+          path: '/maps',
+          name: 'maps',
+          component: () => import(/* webpackChunkName: "demo" */ './views/Maps.vue')
         }
-        // {
-        //   path: '/icons',
-        //   name: 'icons',
-        //   component: () => import(/* webpackChunkName: "demo" */ './views/Icons.vue')
-        // },
-        // {
-        //   path: '/profile',
-        //   name: 'profile',
-        //   component: () => import(/* webpackChunkName: "demo" */ './views/UserProfile.vue')
-        // },
-        // {
-        //   path: '/maps',
-        //   name: 'maps',
-        //   component: () => import(/* webpackChunkName: "demo" */ './views/Maps.vue')
-        // }
       ]
     },
     // {

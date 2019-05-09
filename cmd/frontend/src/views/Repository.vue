@@ -15,7 +15,7 @@
                     </h3>
                     </div>
                     <div class="col text-right">
-                    <base-button type="primary" size="sm">See all</base-button>
+                    <!-- <base-button type="primary" size="sm">See all</base-button> -->
                     </div>
                 </div>
                 </div>

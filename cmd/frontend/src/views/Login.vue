@@ -1,10 +1,16 @@
 <template>
-        <div class="row justify-content-center">
-            <div class="col-lg-5 col-md-7">
-                <div class="card bg-secondary shadow border-0">
-                    <div class="card-header bg-transparent pb-5">
-                        <div class="text-muted text-center mt-2 mb-3"><small>Sign in with</small></div>
-                        <div class="btn-wrapper text-center">
+        <div>
+            <base-header class="header pb-8 pt-5 pt-lg-8 d-flex align-items-center"
+                        style="min-height: 600px; background-size: cover; background-position: center top;">
+                <!-- Mask -->
+                <span class="mask bg-primary"></span>
+                <!-- Header container -->
+                <div class="container-fluid d-flex align-items-center">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-7 col-md-10">
+                            <h1 class="display-2 text-white">Welcome to Devops Helper!</h1>
+                            <p class="text-white mt-0 mb-5">Currently only available for Microsoft Employees.</p>
+                            <p class="text-white display-5" >Sign In With</p>
                             <a v-on:click="login()" class="btn btn-neutral btn-icon">
                                 <span class="btn-inner--icon"><img src="img/icons/common/microsoft.jpg"></span>
                                 <span class="btn-inner--text">Microsoft</span>
@@ -12,7 +18,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </base-header>
         </div>
 </template>
 
