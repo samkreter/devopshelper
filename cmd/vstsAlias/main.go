@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	vsts "github.com/samkreter/vsts-goclient/client"
-	"github.com/samkreter/vstsautoreviewer/pkg/config"
-	"github.com/samkreter/vstsautoreviewer/pkg/utils"
+	"github.com/samkreter/devopshelper/pkg/config"
+	"github.com/samkreter/devopshelper/pkg/utils"
 )
 
 var (

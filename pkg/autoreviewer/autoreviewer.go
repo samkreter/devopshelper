@@ -9,8 +9,8 @@ import (
 
 	vstsObj "github.com/samkreter/vsts-goclient/api/git"
 	vsts "github.com/samkreter/vsts-goclient/client"
-	"github.com/samkreter/vstsautoreviewer/pkg/store"
-	"github.com/samkreter/vstsautoreviewer/pkg/types"
+	"github.com/samkreter/devopshelper/pkg/store"
+	"github.com/samkreter/devopshelper/pkg/types"
 )
 
 // Filter is a function returns true if a pull request should be filtered out.

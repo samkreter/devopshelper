@@ -12,7 +12,7 @@ import (
 
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
-	"github.com/samkreter/vstsautoreviewer/pkg/types"
+	"github.com/samkreter/devopshelper/pkg/types"
 )
 
 const (

@@ -9,8 +9,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/samkreter/go-core/log"
-	"github.com/samkreter/vstsautoreviewer/pkg/store"
-	"github.com/samkreter/vstsautoreviewer/pkg/types"
+	"github.com/samkreter/devopshelper/pkg/store"
+	"github.com/samkreter/devopshelper/pkg/types"
 )
 
 var (

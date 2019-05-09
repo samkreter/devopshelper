@@ -12,8 +12,8 @@ import (
 	"github.com/samkreter/go-core/httputil"
 	"github.com/samkreter/go-core/log"
 	vsts "github.com/samkreter/vsts-goclient/client"
-	"github.com/samkreter/vstsautoreviewer/pkg/store"
-	"github.com/samkreter/vstsautoreviewer/pkg/types"
+	"github.com/samkreter/devopshelper/pkg/store"
+	"github.com/samkreter/devopshelper/pkg/types"
 )
 
 type contextKey string
