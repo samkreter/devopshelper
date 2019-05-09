@@ -5,11 +5,11 @@
               expand>
         <form class="navbar-search navbar-search-dark form-inline mr-3 d-none d-md-flex ml-lg-auto">
             <div class="form-group mb-0">
-                <base-input placeholder="Search"
+                <!-- <base-input placeholder="Search"
                             class="input-group-alternative"
                             alternative=""
                             addon-right-icon="fas fa-search">
-                </base-input>
+                </base-input> -->
             </div>
         </form>
         <ul class="navbar-nav align-items-center d-none d-md-flex">

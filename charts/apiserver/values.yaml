@@ -40,10 +40,14 @@ ingress:
     - host: devopshelper.eastus.cloudapp.azure.com
       paths: 
         - /api
+    - host: devopshelper.io
+      paths: 
+        - /api
   tls:
    - secretName: tls-secret-prod
      hosts:
        - devopshelper.eastus.cloudapp.azure.com
+       - devopshelper.io
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
