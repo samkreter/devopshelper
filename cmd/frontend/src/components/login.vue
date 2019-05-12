@@ -28,7 +28,6 @@
               this.authService.login().then(
                 user => {
                   if (user) {
-                    console.log("#######: ", user)
                     this.user = user;
                     this.callAPI()
                   } else {

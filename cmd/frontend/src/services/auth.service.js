@@ -31,7 +31,6 @@ export default class AuthService {
     return this.app.loginPopup(this.applicationConfig.graphScopes).then(
       idToken => {
         const user = this.app.getUser();
-        console.log("####: ", user)
         if (user) {
           return user;
         } else {
@@ -69,7 +68,6 @@ export default class AuthService {
   {
    if(tokenType === "access_token")
    {
-     console.log("###: ", token)
        //callMSGraph(applicationConfig.graphEndpoint, token, graphAPICallback);
    } else {
           console.log("token type is:"+tokenType);

@@ -41,30 +41,31 @@
                     this.$authService.getToken().then(
                         token => {
                             user.token = token
-                            this.$store.commit("setUser", user)
-                            this.$router.push({ name: "repositories" });
-                            // this.graphService.getUserInfo(token).then(
-                            //     data => {
-                            //         this.$emit("authenticated", data);
-                            //         this.$router.replace({ name: "repositories" });
-                            //     },
-                            //     error => {
-                            //     console.error(error);
-                            //     }
-                            // );
+                            this.graphService.getUserPhoto(token).then(
+                                url => {
+                                    user.photo = url
+                                    this.$store.commit("setUser", user)
+                                    this.$router.push({ name: "repositories" });
+                                },
+                                error => {
+                                    /* eslint-disable no-console */
+                                    console.error(error);
+                                    /* eslint-enable no-console */
+                                }
+                            );
                         },
                         error => {
+                            /* eslint-disable no-console */
                             console.error(error);
+                             /* eslint-enable no-console */
                         }
                     );
                   } else {
+                    /* eslint-disable no-console */
                     console.log("Login failed")
+                    /* eslint-enable no-console */
                   }
-                },
-                () => {
-                  console.log("Login failed")
-                }
-              );
+                });
             }
         }
     }

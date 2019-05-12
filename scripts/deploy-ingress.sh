@@ -21,6 +21,7 @@ kubectl apply \
     -f https://raw.githubusercontent.com/jetstack/cert-manager/release-0.6/deploy/manifests/00-crds.yaml
 
 helm install stable/cert-manager \
+    --name cert-manager \
     --namespace kube-system \
     --set ingressShim.defaultIssuerName=letsencrypt-staging \
     --set ingressShim.defaultIssuerKind=ClusterIssuer \
@@ -28,7 +29,7 @@ helm install stable/cert-manager \
 
 ## NOTE: fill in fqdn in the certificates.yaml file and email in cluster-issuer
 ## Create the cluster issuer resource
-kubectl apply -f ./deployFiles/cluster-issuer.yaml
+kubectl apply -f ./deployFiles/cluster-issuer-prod.yaml
 
 ## Create a certificate resource 
-kubectl apply -f ./deployFiles/certificates.yaml
+kubectl apply -f ./deployFiles/certificate-prod.yaml

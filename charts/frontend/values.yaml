@@ -24,16 +24,12 @@ ingress:
     certmanager.k8s.io/acme-challenge-type: http01
     # kubernetes.io/tls-acme: "true"
   hosts:
-    - host: devopshelper.eastus.cloudapp.azure.com
-      paths: 
-        - /
     - host: devopshelper.io
       paths: 
         - /
   tls:
    - secretName: tls-secret-prod
      hosts:
-       - devopshelper.eastus.cloudapp.azure.com
        - devopshelper.io
 
 resources: {}
