@@ -37,16 +37,12 @@ ingress:
     certmanager.k8s.io/acme-challenge-type: http01
     #nginx.ingress.kubernetes.io/rewrite-target: /
   hosts:
-    - host: devopshelper.eastus.cloudapp.azure.com
-      paths: 
-        - /api
     - host: devopshelper.io
       paths: 
         - /api
   tls:
    - secretName: tls-secret-prod
      hosts:
-       - devopshelper.eastus.cloudapp.azure.com
        - devopshelper.io
 
 resources: {}

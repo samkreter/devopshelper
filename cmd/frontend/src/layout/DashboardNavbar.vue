@@ -17,7 +17,7 @@
                 <base-dropdown class="nav-link pr-0">
                     <div class="media align-items-center" slot="title">
                 <span class="avatar avatar-sm rounded-circle">
-                  <img alt="Image placeholder" src="img/theme/team-4-800x800.jpg">
+                  <img alt="Image placeholder" :src=userPhoto>
                 </span>
                         <div class="media-body ml-2 d-none d-lg-block">
                             <span class="mb-0 text-sm  font-weight-bold">{{user.name}}</span>
@@ -25,10 +25,10 @@
                     </div>
 
                     <template>
-                        <div class=" dropdown-header noti-title">
+                        <!-- <div class=" dropdown-header noti-title">
                             <h6 class="text-overflow m-0">Welcome!</h6>
-                        </div>
-                        <router-link to="/profile" class="dropdown-item">
+                        </div> -->
+                        <!-- <router-link to="/profile" class="dropdown-item">
                             <i class="ni ni-single-02"></i>
                             <span>My profile</span>
                         </router-link>
@@ -43,8 +43,8 @@
                         <router-link to="/profile" class="dropdown-item">
                             <i class="ni ni-support-16"></i>
                             <span>Support</span>
-                        </router-link>
-                        <div class="dropdown-divider"></div>
+                        </router-link> -->
+                        <!-- <div class="dropdown-divider"></div> -->
                         <router-link :to="{ name: 'logout'}" class="dropdown-item">
                             <i class="ni ni-user-run"></i>
                             <span>Logout</span>
@@ -62,7 +62,8 @@
         activeNotifications: false,
         showMenu: false,
         searchQuery: '',
-        user: this.$store.state.user
+        user: this.$store.state.user,
+        userPhoto: this.$store.state.user.photo
       };
     },
     methods: {

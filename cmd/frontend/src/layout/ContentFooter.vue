@@ -15,7 +15,7 @@
             <a href="https://medium.com/@samkreter" class="nav-link" target="_blank">Blog</a>
           </li>
           <li class="nav-item">
-            <a href="https://github.com/samkreter/devopshelper" class="nav-link" target="_blank">License</a>
+            <a href="https://github.com/samkreter/devopshelper/blob/master/LICENSE.md" class="nav-link" target="_blank">License</a>
           </li>
         </ul>
       </div>
