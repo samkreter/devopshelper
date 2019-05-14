@@ -24,6 +24,7 @@
                 <div class="table-responsive">
                 <base-table class="table align-items-center table-flush"
                             :class="type === 'dark' ? 'table-dark': ''"
+                            :enableHover="false"
                             :thead-classes="type === 'dark' ? 'thead-dark': 'thead-light'"
                             tbody-classes="list"
                             :data="coreReviewersToDisplay">
@@ -57,7 +58,7 @@
                         </badge>
                     </td>
 
-                    <td class="text-right">
+                    <!-- <td class="text-right">
                         <base-dropdown class="dropdown"
                                     position="right">
                         <a slot="title" class="btn btn-sm btn-icon-only text-light" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -70,7 +71,7 @@
                             <a class="dropdown-item" href="#">Something else here</a>
                         </template>
                         </base-dropdown>
-                    </td>
+                    </td> -->
 
                     </template>
 
@@ -87,6 +88,7 @@
                 <div class="table-responsive">
                 <base-table class="table align-items-center table-flush"
                             :class="type === 'dark' ? 'table-dark': ''"
+                            :enableHover="false"
                             :thead-classes="type === 'dark' ? 'thead-dark': 'thead-light'"
                             tbody-classes="list"
                             :data="secondReviewersToDisplay">
@@ -120,7 +122,7 @@
                         </badge>
                     </td>
 
-                    <td class="text-right">
+                    <!-- <td class="text-right">
                         <base-dropdown class="dropdown"
                                     position="right">
                         <a slot="title" class="btn btn-sm btn-icon-only text-light" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -133,7 +135,7 @@
                             <a class="dropdown-item" href="#">Something else here</a>
                         </template>
                         </base-dropdown>
-                    </td>
+                    </td> -->
 
                     </template>
 

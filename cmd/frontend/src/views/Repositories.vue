@@ -20,8 +20,9 @@
                 </div>
 
                 <div class="table-responsive">
-                    <base-table class="table align-items-center table-flush"
+                    <base-table class="table align-items-center table-flush "
                                 @rowClicked="goToRepo"
+                                :enableHover="true"
                                 :class="type === 'dark' ? 'table-dark': ''"
                                 :thead-classes="type === 'dark' ? 'thead-dark': 'thead-light'"
                                 tbody-classes="list"
@@ -67,7 +68,7 @@
 
                         </td>
 
-                        <td class="text-right">
+                        <!-- <td class="text-right">
                             <base-dropdown class="dropdown"
                                         position="right">
                             <a slot="title" class="btn btn-sm btn-icon-only text-light" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -83,7 +84,7 @@
                                 </a>
                             </template>
                             </base-dropdown>
-                        </td>
+                        </td> -->
 
                         </template>
 
@@ -151,4 +152,6 @@
     }
   };
 </script>
-<style></style>
+<style>
+
+</style>

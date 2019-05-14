@@ -8,7 +8,7 @@
       </tr>
     </thead>
     <tbody :class="tbodyClasses">
-      <tr @click="alertRowClick(item)" v-for="(item, index) in data" :key="index">
+      <tr @click="alertRowClick(item)" v-for="(item, index) in data" :key="index" :class="enableHover ? 'tableRow': ''">
         <slot :row="item" :index="index">
           <td
             v-for="(column, index) in colsWithValue(item)"
@@ -24,6 +24,7 @@
 export default {
   name: 'base-table',
   props: {
+    enableHover: true,
     columns: {
       type: Array,
       default: () => [],
@@ -73,4 +74,11 @@ export default {
   }
 };
 </script>
-<style></style>
+<style>
+    .tableRow {
+        transition: box-shadow .3s;
+    }
+    .tableRow:hover {
+        box-shadow: 0 0 11px rgba(33,33,33,.2); 
+    }
+</style>

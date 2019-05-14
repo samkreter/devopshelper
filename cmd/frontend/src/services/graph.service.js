@@ -25,8 +25,12 @@ export default class GraphService {
 
       return axios(`${this.graphUrl}me/photo/$value`, { headers: { Authorization: `Bearer ${token}` }, responseType: 'arraybuffer' })
         .then(response => {
-              const avatar = "data:" + response.headers["content-type"] + ";base64," + new Buffer(response.data, 'binary').toString('base64');    
-              return avatar
+              if (response.status == 200) {
+                const avatar = "data:" + response.headers["content-type"] + ";base64," + new Buffer(response.data, 'binary').toString('base64');    
+                return avatar
+              }
+              return ""
+              
             })
             .catch(err => {
                 console.log(err)
