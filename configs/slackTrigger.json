@@ -1,7 +1,0 @@
-{
-    "token": "<oauth-token>",
-	"channel": "<channel-name>",
-	"aliasConvert": {
-        "<vsts-alias>": "<slack-name>"
-    }
-}

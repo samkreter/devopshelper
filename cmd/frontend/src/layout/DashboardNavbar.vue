@@ -16,7 +16,7 @@
             <li class="nav-item dropdown">
                 <base-dropdown class="nav-link pr-0">
                     <div class="media align-items-center" slot="title">
-                <span class="avatar avatar-sm rounded-circle">
+                <span v-if='userPhoto' class="avatar avatar-sm rounded-circle">
                   <img alt="Image placeholder" :src=userPhoto>
                 </span>
                         <div class="media-body ml-2 d-none d-lg-block">
