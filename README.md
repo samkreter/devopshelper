@@ -1,13 +1,5 @@
-# VSTSAutoReviewer
+# Devops Helper
 
-The autoReveiwer will add the functionallity to assign reviewers to open PRs in Visual Studios Team Services.
+Devops helper is bridging the gap that traditional code hosting platforms have to meet every developer's needs to create scalable software as fast as possible. 
 
-Different reviewer groups and wheather the reviewer is optional is specificed through a json file. The state of next reviewer to be assigned is also saved. 
-
-## Infrastructure Deployments
-
-1. Fill in the envvars
-
-2. Run deploy-infrastrucutre.sh script from inside the scripts folder
-
-3. 
+If you have ideas to make it better or find a bug, please open up an issue and our team will get to it when we can. 
