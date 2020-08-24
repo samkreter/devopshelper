@@ -203,7 +203,7 @@ func (s *Server) AddReviewerToRepository(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	reviewer, err := utils.GetReviwerFromAlias(reviewerAlias, s.vstsClient.RestClient)
+	reviewer, err := utils.GetReviewerFromAlias(ctx, reviewerAlias, s.AdoIdentityClient)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to retrive vsts id with error: '%v'", err), http.StatusInternalServerError)
 	}
@@ -462,7 +462,7 @@ func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 			repo.Updated = &now
 
 			// process the reviewers and get their vsts ids
-			if err := s.processReviewers(repo.ReviewerGroups); err != nil {
+			if err := s.processReviewers(ctx, repo.ReviewerGroups); err != nil {
 				httpError(ctx, w, err.Error(), http.StatusBadRequest)
 				return
 			}
@@ -482,7 +482,7 @@ func (s *Server) PostRepository(w http.ResponseWriter, req *http.Request) {
 	return
 }
 
-func (s *Server) processReviewers(reviewerGroups types.ReviewerGroups) error {
+func (s *Server) processReviewers(ctx context.Context, reviewerGroups types.ReviewerGroups) error {
 	for _, group := range reviewerGroups {
 		reviewers := make([]*types.Reviewer, 0)
 		for _, reviewer := range group.Reviewers {
@@ -492,7 +492,7 @@ func (s *Server) processReviewers(reviewerGroups types.ReviewerGroups) error {
 				continue
 			}
 
-			fullReviewer, err := utils.GetReviwerFromAlias(reviewer.Alias, s.vstsClient.RestClient)
+			fullReviewer, err := utils.GetReviewerFromAlias(ctx, reviewer.Alias, s.AdoIdentityClient)
 			if err != nil {
 				log.G(context.TODO()).Errorf("failed to validate reviewer '%s' with err: '%v'", reviewer.Alias, err)
 				continue
@@ -550,7 +550,7 @@ func (s *Server) PutRepository(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// process the reviewers and get their vsts ids
-	if err := s.processReviewers(repo.ReviewerGroups); err != nil {
+	if err := s.processReviewers(ctx, repo.ReviewerGroups); err != nil {
 		httpError(ctx, w, err.Error(), http.StatusBadRequest)
 		return
 	}

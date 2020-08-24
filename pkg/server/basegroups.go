@@ -84,7 +84,7 @@ func (s *Server) PutBaseGroup(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err := s.processReviewers(baseGroup.ReviewerGroups); err != nil {
+	if err := s.processReviewers(ctx, baseGroup.ReviewerGroups); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

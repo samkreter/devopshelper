@@ -1,80 +1,45 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
+	"context"
 
 	"github.com/samkreter/devopshelper/pkg/types"
+	adoIdentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
 )
 
-const (
-	identityURL = "https://vssps.dev.azure.com/mseng/_apis/identities?searchFilter=DirectoryAlias&filterValue=%s&api-version=5.0"
+
+var (
+	DirectoryAliasIdentitySearchFilter = "DirectoryAlias"
 )
 
-type IdentityResponse struct {
-	Count int64      `json:"count"`
-	Value []Identity `json:"value"`
-}
 
-type Identity struct {
-	ID                  string              `json:"id"`
-	Descriptor          string              `json:"descriptor"`
-	SubjectDescriptor   string              `json:"subjectDescriptor"`
-	ProviderDisplayName string              `json:"providerDisplayName"`
-	IsActive            bool                `json:"isActive"`
-	Members             []interface{}       `json:"members"`
-	MemberOf            []interface{}       `json:"memberOf"`
-	MemberIDS           []interface{}       `json:"memberIds"`
-	Properties          map[string]Property `json:"properties"`
-	ResourceVersion     int64               `json:"resourceVersion"`
-	MetaTypeID          int64               `json:"metaTypeId"`
-}
-
-type Property struct {
-	Type  Type   `json:"$type"`
-	Value string `json:"$value"`
-}
-
-type Type string
-
-const (
-	SystemDateTime Type = "System.DateTime"
-	SystemString   Type = "System.String"
-)
-
-type devOpsClient interface {
-	Do(method, url string, body io.Reader) ([]byte, error)
-}
-
-// GetReviwerFromAlias gets a reviewer from an alias
-func GetReviwerFromAlias(alias string, client devOpsClient) (*types.Reviewer, error) {
-	identity, err := GetDevOpsIdentity(alias, client)
+// GetReviewerFromAlias gets a reviewer from an alias
+func GetReviewerFromAlias(ctx context.Context, alias string, adoIdentityClient adoIdentity.Client) (*types.Reviewer, error) {
+	identity, err := GetDevOpsIdentity(ctx, alias, adoIdentityClient)
 	if err != nil {
 		return nil, err
 	}
 
 	return &types.Reviewer{
 		Alias: alias,
-		ID:    identity.ID,
+		ID:    identity.Id.String(),
 	}, nil
 }
 
 // GetDevOpsIdentity returns the azure devops identity for a given alais
-func GetDevOpsIdentity(alias string, client devOpsClient) (*Identity, error) {
-	b, err := client.Do("GET", fmt.Sprintf(identityURL, alias), nil)
+func GetDevOpsIdentity(ctx context.Context, alias string, adoIdentityClient adoIdentity.Client) (*adoIdentity.Identity, error) {
+	identities, err := adoIdentityClient.ReadIdentities(ctx, adoIdentity.ReadIdentitiesArgs{
+		SearchFilter: &DirectoryAliasIdentitySearchFilter,
+		FilterValue:  &alias,
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	var identityResp IdentityResponse
-	if err := json.Unmarshal(b, &identityResp); err != nil {
-		return nil, err
-	}
-
-	if identityResp.Count != 1 {
+	if len(*identities) != 1 {
 		return nil, fmt.Errorf("Found multiple identities for alias '%s'", alias)
 	}
 
-	return &identityResp.Value[0], nil
+	return &(*identities)[0], nil
 }
