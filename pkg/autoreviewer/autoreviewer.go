@@ -3,13 +3,13 @@ package autoreviewer
 import (
 	"context"
 	"fmt"
-	"github.com/samkreter/devopshelper/pkg/utils"
 	"strings"
 
 	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
 	adoidentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
 	"github.com/samkreter/go-core/log"
 
+	"github.com/samkreter/devopshelper/pkg/utils"
 	"github.com/samkreter/devopshelper/pkg/store"
 	"github.com/samkreter/devopshelper/pkg/types"
 )
