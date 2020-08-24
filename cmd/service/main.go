@@ -80,7 +80,7 @@ func main() {
 	go func() {
 		logger.Info("Starting Reviewer Reconcile Loop....")
 
-		mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient)
+		mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient, adoIdentityClient)
 		if err != nil {
 			logger.Errorf("Failed to create reviewer manager: %s", err)
 		}
@@ -90,7 +90,7 @@ func main() {
 		for {
 			select {
 			case <-time.NewTicker(time.Minute * time.Duration(*reviewIntervalMin)).C:
-				mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient)
+				mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient, adoIdentityClient)
 				if err != nil {
 					logger.Errorf("Failed to create reviewer manager: %s", err)
 					continue
