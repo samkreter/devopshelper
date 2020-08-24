@@ -111,10 +111,18 @@ func NewAutoReviewer(adoGitClient adogit.Client, botIdentifier string, repo *typ
 func (a *AutoReviewer) Run(ctx context.Context) error {
 	logger := log.G(ctx)
 
-	a.adoGitClient.GetRepositories(adogit.GetRepositoriesArgs{})
+	// ensure the ado repo ID is up to date
+	if a.Repo.AdoRepoID == "" {
+		if err := a.updateRepoWithID(ctx); err != nil {
+			return err
+		}
+		logger.Info("Successfully updated ADO Repo ID for Repo: %s", a.Repo.Name)
+	}
 
 	pullRequests, err := a.adoGitClient.GetPullRequests(ctx, adogit.GetPullRequestsArgs{
-
+		RepositoryId: &a.Repo.AdoRepoID,
+		Project: &a.Repo.ProjectName,
+		SearchCriteria: &adogit.GitPullRequestSearchCriteria{},
 	})
 	if err != nil {
 		return fmt.Errorf("get pull requests error: %v", err)
@@ -131,6 +139,31 @@ func (a *AutoReviewer) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (a *AutoReviewer) updateRepoWithID(ctx context.Context) error{
+	if a.Repo.AdoRepoID != "" {
+		return nil
+	}
+
+	adoRepos, err := a.adoGitClient.GetRepositories(ctx, adogit.GetRepositoriesArgs{
+		Project: &a.Repo.ProjectName,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, adoRepo := range *adoRepos {
+		if *adoRepo.Name == a.Repo.Name {
+			a.Repo.AdoRepoID = adoRepo.Id.String()
+			if err := a.RepoStore.UpdateRepository(ctx, a.Repo.ID.Hex(), a.Repo); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	return fmt.Errorf("repo: %s not found in project %s", a.Repo.Name, a.Repo.ProjectName)
 }
 
 func (a *AutoReviewer) shouldFilter(pr adogit.GitPullRequest) bool {
@@ -156,7 +189,7 @@ func (a *AutoReviewer) balanceReview(ctx context.Context, pr adogit.GitPullReque
 	}
 
 	// save the repo after pos change
-	if err := a.RepoStore.UpdateRepository(context.TODO(), a.Repo.ID.Hex(), a.Repo); err != nil {
+	if err := a.RepoStore.UpdateRepository(ctx, a.Repo.ID.Hex(), a.Repo); err != nil {
 		return err
 	}
 
@@ -233,14 +266,13 @@ func (a *AutoReviewer) ContainsReviewBalancerComment(ctx context.Context, reposi
 func (a *AutoReviewer) AddReviewers(ctx context.Context, pullRequestID int, repoID string, required, optional []*types.Reviewer) error {
 	for _, reviewer := range append(required, optional...) {
 		_, err := a.adoGitClient.CreatePullRequestReviewer(ctx, adogit.CreatePullRequestReviewerArgs{
-			Reviewer: &adogit.IdentityRefWithVote{
-				Id: &reviewer.ID,
-			},
+			Reviewer: &adogit.IdentityRefWithVote{},
+			ReviewerId: &reviewer.ID,
 			RepositoryId: &repoID,
 			PullRequestId: &pullRequestID,
 		})
 		if err != nil {
-			return fmt.Errorf("gailed to add reviewer %s with error %v", reviewer.Alias, err)
+			return fmt.Errorf("failed to add reviewer %s with error %v", reviewer.Alias, err)
 		}
 	}
 
