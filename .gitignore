@@ -1,4 +1,6 @@
 .env-local
 conf-local
 
+**/.idea
+
 **/node_modules
