@@ -85,7 +85,7 @@ func IncomingRequestLoggingMiddleware(next http.Handler) http.Handler {
 
 		rr := &responseRecorder{w: w}
 
-		log.G(ctx).WithFields(fields).Debug("Incoming request Start")
+		log.G(ctx).WithFields(fields).Info("Incoming request Start")
 
 		startTime := time.Now()
 
@@ -94,7 +94,7 @@ func IncomingRequestLoggingMiddleware(next http.Handler) http.Handler {
 			fields["httpStatusCode"] = rr.statusCode
 			fields["durationInMilliseconds"] = time.Now().Sub(startTime)
 
-			log.G(ctx).WithFields(fields).Debug("Incoming request End")
+			log.G(ctx).WithFields(fields).Info("Incoming request End")
 		}()
 
 		next.ServeHTTP(rr, req.WithContext(ctx))

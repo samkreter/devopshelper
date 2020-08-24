@@ -32,6 +32,7 @@ type Repository struct {
 	ReviewerGroups ReviewerGroups `json:"reviewerGroups" bson:"reviewerGroups,omitempty"`
 	Enabled        bool           `json:"enabled" bson:"enabled,omitempty"`
 	Owners         []string       `json:"owners" bson:"owners,omitempty"`
+	AdoRepoID      string         `json:"AdoRepoID" bson: "AdoRepoID,omitempty"`
 }
 
 // BaseGroup holds the base groups to be added or removed from a repo

@@ -44,42 +44,20 @@ apiserver-push: apiserver-build
 apiserver-purge:
 	helm delete apiserver --purge
 
-apiserver-run: build-apiserver
-	docker run -p 8080:8080 ${SERVICE_REPO} --vsts-token ${VSTS_TOKEN} --vsts-username ${VSTS_USERNAME} --mongo-uri ${MONGO_URI} --log-level debug
-
+apiserver-run:
+	go build -o ./bin/server ./cmd/service
+	./bin/server --pat-token ${PAT_TOKEN} --mongo-uri ${MONGO_URI} --log-level debug --mongo-repo-collection=prodRepo
 
 apiserver-deploy:
-	helm install --name apiserver ./charts/apiserver --set apiserver.token=${VSTS_TOKEN} \
-		--set apiserver.username=${VSTS_USERNAME} --set apiserver.mongouri=${MONGO_URI} \
+	helm install --name apiserver ./charts/apiserver --set apiserver.token=${PAT_TOKEN} \
+		--set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${SERVICE_REPO}
 
 apiserver-upgrade:
-	helm upgrade --set apiserver.token=${VSTS_TOKEN} \
+	helm upgrade --set apiserver.token=${PAT_TOKEN} \
 		--reuse-values \
-		--set apiserver.username=${VSTS_USERNAME} --set apiserver.mongouri=${MONGO_URI} \
+	   --set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${SERVICE_REPO} apiserver ./charts/apiserver
 
-###### Test Commands #######
-test-apiserver-build:
-	docker build -t ${TEST_SERVICE_REPO} -f ./cmd/service/Dockerfile . 
-
-test-apiserver-push: test-apiserver-build
-	docker push ${TEST_SERVICE_REPO}
-
-apiserver-test-deploy:
-	helm install -f ./charts/apiserver/test-values.yaml --name test-apiserver ./charts/apiserver --set apiserver.token=${VSTS_TOKEN} \
-		--set apiserver.username=${VSTS_USERNAME} --set apiserver.mongouri=${MONGO_URI} \
-		--set apiserver.image=${TEST_SERVICE_REPO}
-
-apiserver-test-upgrade:
-	helm upgrade -f ./charts/apiserver/test-values.yaml --set apiserver.token=${VSTS_TOKEN} \
-		--set apiserver.username=${VSTS_USERNAME} --set apiserver.mongouri=${MONGO_URI} \
-		--set apiserver.image=${TEST_SERVICE_REPO} test-apiserver ./charts/apiserver
 
 
-#### Reviewer V1 #######
-push: build
-	docker push ${REVIEWER_REPO}
-
-build:
-	docker build -t ${REVIEWER_REPO} -f ./cmd/reviewer/Dockerfile .

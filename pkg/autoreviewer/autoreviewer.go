@@ -3,29 +3,87 @@ package autoreviewer
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
-	"time"
 
-	vstsObj "github.com/samkreter/vsts-goclient/api/git"
-	vsts "github.com/samkreter/vsts-goclient/client"
+	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
+	"github.com/samkreter/go-core/log"
+
 	"github.com/samkreter/devopshelper/pkg/store"
 	"github.com/samkreter/devopshelper/pkg/types"
 )
 
-// Filter is a function returns true if a pull request should be filtered out.
-type Filter func(vstsObj.GitPullRequest) bool
+const (
+	defaultBotIdentifier = "b03f5f7f11d50a3a"
+)
 
-// ReviwerTrigger is called with the reviewers that have been selected. Allows for adding custom events
+var (
+	defaultFilters = []Filter{
+		filterWIP,
+		filterMasterBranchOnly,
+	}
+)
+
+// Filter is a function returns true if a pull request should be filtered out.
+type Filter func(adogit.GitPullRequest) bool
+
+// ReviewerTrigger is called with the reviewers that have been selected. Allows for adding custom events
 //  for each reviewer that is added to the PR. Ex: slack notification.
-type ReviwerTrigger func([]*types.Reviewer, string) error
+type ReviewerTrigger func([]*types.Reviewer, string) error
+
+
+type Manager struct {
+	AutoReviewers []*AutoReviewer
+	repoStore store.RepositoryStore
+}
+
+func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, adoGitClient adogit.Client) (*Manager, error) {
+	repos, err := repoStore.GetAllRepositories(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	enabledRepos := []*types.Repository{}
+	for _, repo := range repos {
+		if repo.Enabled {
+			enabledRepos = append(enabledRepos, repo)
+		}
+	}
+
+	aReviewers := make([]*AutoReviewer, 0, len(repos))
+	for _, repo := range enabledRepos {
+		aReviewer, err := NewAutoReviewer(adoGitClient, defaultBotIdentifier, repo, repoStore, defaultFilters, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		aReviewers = append(aReviewers, aReviewer)
+	}
+
+	return &Manager{
+		repoStore: repoStore,
+		AutoReviewers: aReviewers,
+	}, nil
+}
+
+func (m *Manager) Run(ctx context.Context) {
+	logger := log.G(ctx)
+
+	for _, aReviewer := range m.AutoReviewers {
+		logger.Infof("Starting Reviewer for repo: %s/%s", aReviewer.Repo.ProjectName, aReviewer.Repo.Name)
+		if err := aReviewer.Run(ctx); err != nil {
+			logger.Errorf("Failed to balance repo: %s/%s with err: %v", aReviewer.Repo.ProjectName, aReviewer.Repo.Name, err)
+		}
+		logger.Infof("Finished Balancing Cycle for: %s/%s", aReviewer.Repo.ProjectName, aReviewer.Repo.Name)
+	}
+}
+
 
 // AutoReviewer automaticly adds reviewers to a vsts pull request
 type AutoReviewer struct {
 	filters          []Filter
-	reviewerTriggers []ReviwerTrigger
-	vstsClient       *vsts.Client
-	botMaker         string
+	reviewerTriggers []ReviewerTrigger
+	adoGitClient     adogit.Client
+	botIdentifier         string
 	Repo             *types.Repository
 	RepoStore        store.RepositoryStore
 }
@@ -38,28 +96,44 @@ type ReviewerInfo struct {
 }
 
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(vstsClient *vsts.Client, botMaker string, repo *types.Repository, repoStore store.RepositoryStore, filters []Filter, rTriggers []ReviwerTrigger) (*AutoReviewer, error) {
+func NewAutoReviewer(adoGitClient adogit.Client, botIdentifier string, repo *types.Repository, repoStore store.RepositoryStore, filters []Filter, rTriggers []ReviewerTrigger) (*AutoReviewer, error) {
 	return &AutoReviewer{
 		Repo:             repo,
 		RepoStore:        repoStore,
-		vstsClient:       vstsClient,
+		adoGitClient:     adoGitClient,
 		filters:          filters,
 		reviewerTriggers: rTriggers,
-		botMaker:         botMaker,
+		botIdentifier:         botIdentifier,
 	}, nil
 }
 
-// RunInterval executes the autoreviewer at the set interval
-func (a *AutoReviewer) RunInterval() {
-	for range time.NewTicker(time.Second * 30).C {
-		if err := a.Run(); err != nil {
-			log.Println("Error for main run", err)
-		}
-		log.Println("Running Review cycle...")
+// Run starts the autoreviewer for a single instance
+func (a *AutoReviewer) Run(ctx context.Context) error {
+	logger := log.G(ctx)
+
+	a.adoGitClient.GetRepositories(adogit.GetRepositoriesArgs{})
+
+	pullRequests, err := a.adoGitClient.GetPullRequests(ctx, adogit.GetPullRequestsArgs{
+
+	})
+	if err != nil {
+		return fmt.Errorf("get pull requests error: %v", err)
 	}
+
+	for _, pullRequest := range *pullRequests {
+		if a.shouldFilter(pullRequest) {
+			continue
+		}
+
+		if err := a.balanceReview(ctx, pullRequest); err != nil {
+			logger.Errorf("ERROR: balancing reviewers with error %v", err)
+		}
+	}
+
+	return nil
 }
 
-func (a *AutoReviewer) shouldFilter(pr vstsObj.GitPullRequest) bool {
+func (a *AutoReviewer) shouldFilter(pr adogit.GitPullRequest) bool {
 	for _, filter := range a.filters {
 		if filter(pr) {
 			return true
@@ -69,82 +143,84 @@ func (a *AutoReviewer) shouldFilter(pr vstsObj.GitPullRequest) bool {
 	return false
 }
 
-// Run starts the autoreviewer for a single instance
-func (a *AutoReviewer) Run() error {
-	pullRequests, err := a.vstsClient.GetPullRequests(nil)
+func (a *AutoReviewer) balanceReview(ctx context.Context, pr adogit.GitPullRequest) error {
+	logger := log.G(ctx)
+
+	if a.ContainsReviewBalancerComment(ctx, pr.Repository.Id.String(),  *pr.PullRequestId) {
+		return nil
+	}
+
+	requiredReviewers, optionalReviewers, err := a.Repo.ReviewerGroups.GetReviewers(*pr.CreatedBy.Id)
 	if err != nil {
-		return fmt.Errorf("get pull requests error: %v", err)
+		return err
 	}
 
-	for _, pullRequest := range pullRequests {
-		if a.shouldFilter(pullRequest) {
-			continue
-		}
-
-		if err := a.balanceReview(pullRequest); err != nil {
-			log.Printf("ERROR: balancing reviewers with error %v", err)
-		}
+	// save the repo after pos change
+	if err := a.RepoStore.UpdateRepository(context.TODO(), a.Repo.ID.Hex(), a.Repo); err != nil {
+		return err
 	}
 
-	return nil
-}
+	if err := a.AddReviewers(ctx, *pr.PullRequestId, pr.Repository.Id.String(), requiredReviewers, optionalReviewers); err != nil {
+		return fmt.Errorf("add reviewers error: %v", err)
+	}
 
-func (a *AutoReviewer) balanceReview(pullRequest vstsObj.GitPullRequest) error {
-	if !a.ContainsReviewBalancerComment(pullRequest.PullRequestId) {
-		requiredReviewers, optionalReviewers, err := a.Repo.ReviewerGroups.GetReviewers(pullRequest.CreatedBy.ID)
-		if err != nil {
-			return err
-		}
+	comment := fmt.Sprintf(
+		"Hello %s,\r\n\r\n"+
+			"You are randomly selected as the **required** code reviewers of this change. \r\n\r\n"+
+			"Your responsibility is to review **each** iteration of this CR until signoff. You should provide no more than 48 hour SLA for each iteration.\r\n\r\n"+
+			"Thank you.\r\n\r\n"+
+			"CR Balancer\r\n"+
+			"%s",
+		strings.Join(GetReviewersAlias(requiredReviewers), ","),
+		a.botIdentifier)
 
-		// save the repo after pos change
-		if err := a.RepoStore.UpdateRepository(context.TODO(), a.Repo.ID.Hex(), a.Repo); err != nil {
-			return err
-		}
+	repoID := pr.Repository.Id.String()
+	_, err = a.adoGitClient.CreateThread(ctx, adogit.CreateThreadArgs{
+		RepositoryId: &repoID,
+		PullRequestId: pr.PullRequestId,
+		CommentThread: &adogit.GitPullRequestCommentThread{
+			Comments: &[]adogit.Comment{
+				{
+					Content: &comment,
+				},
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("add thread error: %v", err)
+	}
 
-		if err := a.AddReviewers(pullRequest.PullRequestId, requiredReviewers, optionalReviewers); err != nil {
-			return fmt.Errorf("add reviewers error: %v", err)
-		}
+	logger.Infof("Adding %s as required reviewers and %s as observer to PR: %d",
+		GetReviewersAlias(requiredReviewers),
+		GetReviewersAlias(requiredReviewers),
+		*pr.PullRequestId)
 
-		comment := fmt.Sprintf(
-			"Hello %s,\r\n\r\n"+
-				"You are randomly selected as the **required** code reviewers of this change. \r\n\r\n"+
-				"Your responsibility is to review **each** iteration of this CR until signoff. You should provide no more than 48 hour SLA for each iteration.\r\n\r\n"+
-				"Thank you.\r\n\r\n"+
-				"CR Balancer\r\n"+
-				"%s",
-			strings.Join(GetReviewersAlias(requiredReviewers), ","),
-			a.botMaker)
 
-		if err := a.vstsClient.AddThread(pullRequest.PullRequestId, comment); err != nil {
-			return fmt.Errorf("add thread error: %v", err)
-		}
-		log.Printf("INFO: Adding %s as required reviewers and %s as observer to PR: %d",
-			GetReviewersAlias(requiredReviewers),
-			GetReviewersAlias(requiredReviewers),
-			pullRequest.PullRequestId)
-
-		pullRequestURL := getPullRequestURL(a.vstsClient.Instance, a.vstsClient.Project, a.vstsClient.Repo, pullRequest.PullRequestId)
-		for _, rTrigger := range a.reviewerTriggers {
-			if err := rTrigger(requiredReviewers, pullRequestURL); err != nil {
-				log.Printf("ERROR: %v", err)
-			}
+	for _, rTrigger := range a.reviewerTriggers {
+		if err := rTrigger(requiredReviewers, *pr.Url); err != nil {
+			logger.Error(err)
 		}
 	}
 
 	return nil
 }
+
+
 
 // ContainsReviewBalancerComment checks if the passed in review has had a bot comment added.
-func (a *AutoReviewer) ContainsReviewBalancerComment(pullRequestID int32) bool {
-	threads, err := a.vstsClient.GetThreads(pullRequestID, nil)
+func (a *AutoReviewer) ContainsReviewBalancerComment(ctx context.Context, repositoryID string, pullRequestID int) bool {
+	threads, err := a.adoGitClient.GetThreads(ctx, adogit.GetThreadsArgs{
+		RepositoryId: &repositoryID, // TODO repalce with correct
+		PullRequestId: &pullRequestID,
+	})
 	if err != nil {
-		log.Fatalf("FATAL: %v", err)
+		panic(err)
 	}
 
 	if threads != nil {
-		for _, thread := range threads {
-			for _, comment := range thread.Comments {
-				if strings.Contains(comment.Content, a.botMaker) {
+		for _, thread := range *threads {
+			for _, comment := range *thread.Comments {
+				if strings.Contains(*comment.Content, a.botIdentifier) {
 					return true
 				}
 			}
@@ -154,28 +230,21 @@ func (a *AutoReviewer) ContainsReviewBalancerComment(pullRequestID int32) bool {
 }
 
 // AddReviewers adds the passing in reviewers to the pull requests for the passed in review.
-func (a *AutoReviewer) AddReviewers(pullRequestID int32, required, optional []*types.Reviewer) error {
+func (a *AutoReviewer) AddReviewers(ctx context.Context, pullRequestID int, repoID string, required, optional []*types.Reviewer) error {
 	for _, reviewer := range append(required, optional...) {
-		identity := vstsObj.IdentityRefWithVote{
-			ID: reviewer.ID,
-		}
-
-		if err := a.vstsClient.AddReviewer(pullRequestID, identity); err != nil {
-			log.Printf("WARN: Failed to add reviewer %s with error %v", reviewer.Alias, err)
-			continue
+		_, err := a.adoGitClient.CreatePullRequestReviewer(ctx, adogit.CreatePullRequestReviewerArgs{
+			Reviewer: &adogit.IdentityRefWithVote{
+				Id: &reviewer.ID,
+			},
+			RepositoryId: &repoID,
+			PullRequestId: &pullRequestID,
+		})
+		if err != nil {
+			return fmt.Errorf("gailed to add reviewer %s with error %v", reviewer.Alias, err)
 		}
 	}
 
 	return nil
-}
-
-func getPullRequestURL(instance, project, repository string, pullRequestID int32) string {
-	return fmt.Sprintf(
-		"https://%s/DefaultCollection/%s/_git/%s/pullrequest/%d",
-		instance,
-		project,
-		repository,
-		pullRequestID)
 }
 
 // GetReviewersAlias gets all names for the set of passed in reviewers
@@ -187,4 +256,20 @@ func GetReviewersAlias(reviewers []*types.Reviewer) []string {
 		aliases[index] = reviewer.Alias
 	}
 	return aliases
+}
+
+func filterWIP(pr adogit.GitPullRequest) bool {
+	if strings.Contains(*pr.Title, "WIP") {
+		return true
+	}
+
+	return false
+}
+
+func filterMasterBranchOnly(pr adogit.GitPullRequest) bool {
+	if strings.EqualFold(*pr.TargetRefName, "refs/heads/master") {
+		return false
+	}
+
+	return true
 }

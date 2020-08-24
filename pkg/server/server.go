@@ -8,10 +8,12 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
+    adoidentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
 	"github.com/rs/cors"
 	"github.com/samkreter/go-core/httputil"
 	"github.com/samkreter/go-core/log"
-	vsts "github.com/samkreter/vsts-goclient/client"
+
 	"github.com/samkreter/devopshelper/pkg/store"
 	"github.com/samkreter/devopshelper/pkg/types"
 )
@@ -36,14 +38,14 @@ type Options struct {
 
 // Server holds configuration for the server
 type Server struct {
-	vstsClient *vsts.Client
-	httpClient *http.Client
+	AdoGitClient adogit.Client
+	AdoIdentityClient adoidentity.Client
 	RepoStore  store.RepositoryStore
 	Options    *Options
 }
 
 // NewServer creates a new server
-func NewServer(vstsClient *vsts.Client, repoStore store.RepositoryStore, o *Options) (*Server, error) {
+func NewServer(adoGitClient adogit.Client, adoIdentityClient adoidentity.Client, repoStore store.RepositoryStore, o *Options) (*Server, error) {
 	if o.Addr == "" {
 		o.Addr = defaultAddr
 	}
@@ -51,9 +53,9 @@ func NewServer(vstsClient *vsts.Client, repoStore store.RepositoryStore, o *Opti
 	log.G(context.TODO()).Infof("Adding admins: '%s'", strings.Join(o.Admins, ", "))
 
 	return &Server{
-		vstsClient: vstsClient,
+		AdoGitClient: adoGitClient,
+		AdoIdentityClient: adoIdentityClient,
 		RepoStore:  repoStore,
-		httpClient: httputil.NewHTTPClient(true, true, true),
 		Options:    o,
 	}, nil
 }

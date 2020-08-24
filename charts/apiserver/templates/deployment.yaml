@@ -24,8 +24,7 @@ spec:
           image: "{{ .Values.apiserver.image }}"
           imagePullPolicy: {{ .Values.apiserver.pullPolicy }}
           args:
-            - --vsts-token={{ .Values.apiserver.token }}
-            - --vsts-username={{ .Values.apiserver.username }}
+            - --pat-token={{ .Values.apiserver.token }}
             - --mongo-uri={{ .Values.apiserver.mongouri}}
             {{- if .Values.apiserver.address }}
             - --addr={{ .Values.apiserver.address }}
