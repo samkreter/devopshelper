@@ -3,9 +3,11 @@ package autoreviewer
 import (
 	"context"
 	"fmt"
+	"github.com/samkreter/devopshelper/pkg/utils"
 	"strings"
 
 	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
+	adoidentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
 	"github.com/samkreter/go-core/log"
 
 	"github.com/samkreter/devopshelper/pkg/store"
@@ -36,7 +38,7 @@ type Manager struct {
 	repoStore store.RepositoryStore
 }
 
-func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, adoGitClient adogit.Client) (*Manager, error) {
+func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, adoGitClient adogit.Client, aodIdentityClient adoidentity.Client) (*Manager, error) {
 	repos, err := repoStore.GetAllRepositories(ctx)
 	if err != nil {
 		return nil, err
@@ -51,7 +53,7 @@ func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, ado
 
 	aReviewers := make([]*AutoReviewer, 0, len(repos))
 	for _, repo := range enabledRepos {
-		aReviewer, err := NewAutoReviewer(adoGitClient, defaultBotIdentifier, repo, repoStore, defaultFilters, nil)
+		aReviewer, err := NewAutoReviewer(adoGitClient, aodIdentityClient, defaultBotIdentifier, repo, repoStore, defaultFilters, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -77,12 +79,12 @@ func (m *Manager) Run(ctx context.Context) {
 	}
 }
 
-
 // AutoReviewer automaticly adds reviewers to a vsts pull request
 type AutoReviewer struct {
 	filters          []Filter
 	reviewerTriggers []ReviewerTrigger
 	adoGitClient     adogit.Client
+	adoIdentityClient adoidentity.Client
 	botIdentifier         string
 	Repo             *types.Repository
 	RepoStore        store.RepositoryStore
@@ -96,14 +98,15 @@ type ReviewerInfo struct {
 }
 
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(adoGitClient adogit.Client, botIdentifier string, repo *types.Repository, repoStore store.RepositoryStore, filters []Filter, rTriggers []ReviewerTrigger) (*AutoReviewer, error) {
+func NewAutoReviewer(adoGitClient adogit.Client, adoIdentityClient adoidentity.Client, botIdentifier string, repo *types.Repository, repoStore store.RepositoryStore, filters []Filter, rTriggers []ReviewerTrigger) (*AutoReviewer, error) {
 	return &AutoReviewer{
-		Repo:             repo,
-		RepoStore:        repoStore,
-		adoGitClient:     adoGitClient,
-		filters:          filters,
-		reviewerTriggers: rTriggers,
-		botIdentifier:         botIdentifier,
+		Repo:              repo,
+		RepoStore:         repoStore,
+		adoGitClient:      adoGitClient,
+		adoIdentityClient: adoIdentityClient,
+		filters:           filters,
+		reviewerTriggers:  rTriggers,
+		botIdentifier:     botIdentifier,
 	}, nil
 }
 
@@ -111,12 +114,8 @@ func NewAutoReviewer(adoGitClient adogit.Client, botIdentifier string, repo *typ
 func (a *AutoReviewer) Run(ctx context.Context) error {
 	logger := log.G(ctx)
 
-	// ensure the ado repo ID is up to date
-	if a.Repo.AdoRepoID == "" {
-		if err := a.updateRepoWithID(ctx); err != nil {
-			return err
-		}
-		logger.Info("Successfully updated ADO Repo ID for Repo: %s", a.Repo.Name)
+	if err := a.ensureRepo(ctx); err != nil {
+		return err
 	}
 
 	pullRequests, err := a.adoGitClient.GetPullRequests(ctx, adogit.GetPullRequestsArgs{
@@ -141,7 +140,44 @@ func (a *AutoReviewer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (a *AutoReviewer) updateRepoWithID(ctx context.Context) error{
+func (a *AutoReviewer) ensureRepo(ctx context.Context) error {
+	if err := a.ensureAdoRepoID(ctx); err != nil {
+		return err
+	}
+
+	if err := a.ensureReviewersIDs(ctx); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a *AutoReviewer) ensureReviewersIDs(ctx context.Context) error {
+	updated := false
+	for _, reviewerGroup := range a.Repo.ReviewerGroups {
+		for _, reviewer := range reviewerGroup.Reviewers {
+			if reviewer.ID == "" {
+				identity, err := utils.GetDevOpsIdentity(ctx, reviewer.Alias, a.adoIdentityClient)
+				if err != nil {
+					return err
+				}
+
+				reviewer.ID = identity.Id.String()
+				updated = true
+			}
+		}
+	}
+
+	if updated {
+		if err := a.RepoStore.UpdateRepository(ctx, a.Repo.ID.String(), a.Repo); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *AutoReviewer) ensureAdoRepoID(ctx context.Context) error{
 	if a.Repo.AdoRepoID != "" {
 		return nil
 	}
