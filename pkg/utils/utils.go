@@ -23,7 +23,7 @@ func GetReviewerFromAlias(ctx context.Context, alias string, adoIdentityClient a
 
 	return &types.Reviewer{
 		Alias: alias,
-		ID:    identity.Id.String(),
+		AdoID: identity.Id.String(),
 	}, nil
 }
 

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samkreter/go-core/log"
-	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
 	"github.com/microsoft/azure-devops-go-api/azuredevops"
+	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
+	"github.com/samkreter/go-core/log"
 
 	"github.com/samkreter/devopshelper/pkg/autoreviewer"
 	"github.com/samkreter/devopshelper/pkg/server"
@@ -65,14 +65,6 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	r, err := repoStore.PopLRUReviewer(ctx, []string{"segoings", "segoings2"})
-	if err != nil {
-		logger.Fatal(err)
-	}
-
-	fmt.Println(r)
-
-	return
 
 	conn := azuredevops.NewPatConnection(organizationUrl, adoPatToken)
 	adoGitClient, err := adogit.NewClient(ctx, conn)

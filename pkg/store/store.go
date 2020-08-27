@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/samkreter/go-core/log"
 
 	"github.com/globalsign/mgo"
-	"github.com/globalsign/mgo/txn"
 	"github.com/globalsign/mgo/bson"
 	"github.com/samkreter/devopshelper/pkg/types"
 )
@@ -35,6 +35,7 @@ var (
 type RepositoryStore interface {
 	PopLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
 	GetLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
+	AddReviewer(ctx context.Context, reviewer *types.Reviewer) error
 
 	// Repository Ops
 	AddRepository(ctx context.Context, repo *types.Repository) error
@@ -70,6 +71,7 @@ type MongoStore struct {
 	ReviewerGroupCollectionName string
 	sesson                      *mgo.Session
 	Options                     *MongoStoreOptions
+	reviewerWriteLock sync.Mutex
 }
 
 // Close closes a mongo store and it's session
@@ -159,33 +161,22 @@ func (ms *MongoStore) getCollection(collection string) (*mgo.Session, *mgo.Colle
 
 
 func (ms *MongoStore) PopLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error) {
-	session, col := ms.getCollection(ms.Options.ReviewerCollection)
-	defer session.Close()
+	// Lock, trying to fake a transaction using mongo
+	ms.reviewerWriteLock.Lock()
+	defer ms.reviewerWriteLock.Unlock()
 
 	lruReviewer, err := ms.GetLRUReviewer(ctx, alias)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println("#### Got lrureviewer")
+	lruReviewer.LastReviewTime = time.Now().UTC()
 
-	runner := txn.NewRunner(col)
-	txn.DefaultRunnerOptions()
-	ops := []txn.Op{
-		{
-			C: ms.Options.ReviewerCollection,
-			Id: bson.M{"alias": lruReviewer.Alias},
-			Assert: bson.M{"lastReviewTime": lruReviewer.LastReviewTime.String()},
-			Update: bson.M{"lastReviewTime": time.Now().String()},
-		},
-	}
-	if err := runner.Run(ops, "", nil); err != nil {
-		switch err {
-		case txn.ErrAborted:
-			return nil, ErrTransactionAborted
-		default:
-			return nil, err
-		}
+	fmt.Printf("#### Got lrureviewer: %+v", lruReviewer)
+
+
+	if err := ms.UpdateReviewer(ctx, lruReviewer); err != nil {
+		return nil, err
 	}
 
 	return lruReviewer, nil
@@ -195,10 +186,10 @@ func (ms *MongoStore) GetLRUReviewer(ctx context.Context, alias []string) (*type
 	session, col := ms.getCollection(ms.Options.ReviewerCollection)
 	defer session.Close()
 
-	fmt.Println("#####: ", alias)
+	fmt.Println("#####: ", alias, "col: ", col.Name)
 
 	var reviewer types.Reviewer
-	err := col.Find(bson.M{"alias": bson.M{"$in": alias}}).Sort("-lastReviewTime").One(&reviewer)
+	err := col.Find(bson.M{"alias": bson.M{"$in": alias}}).Sort("-lastreviewtime").One(&reviewer)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return nil, ErrNotFound
@@ -207,6 +198,28 @@ func (ms *MongoStore) GetLRUReviewer(ctx context.Context, alias []string) (*type
 	}
 
 	return &reviewer, nil
+}
+
+func (ms *MongoStore) AddReviewer(ctx context.Context, reviewer *types.Reviewer) error {
+	session, col := ms.getCollection(ms.Options.ReviewerCollection)
+	defer session.Close()
+
+	if err := col.Insert(reviewer); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ms *MongoStore) UpdateReviewer(ctx context.Context, reviewer *types.Reviewer) error {
+	session, col := ms.getCollection(ms.Options.ReviewerCollection)
+	defer session.Close()
+
+	if err := col.UpdateId(reviewer.Id, reviewer); err != nil {
+		return fmt.Errorf("MongoStore.UpdateReviewer: %v", err)
+	}
+
+	return nil
 }
 
 // AddRepository adds a repository to the mongo database
@@ -249,7 +262,7 @@ func (ms *MongoStore) DeleteRepository(ctx context.Context, id string) error {
 	return nil
 }
 
-// GetRepositoryByID retrieves a repository by it's ID
+// GetRepositoryByID retrieves a repository by it's AdoID
 func (ms *MongoStore) GetRepositoryByID(ctx context.Context, id string) (*types.Repository, error) {
 	session, col := ms.getCollection(ms.Options.RepositoryCollection)
 	defer session.Close()

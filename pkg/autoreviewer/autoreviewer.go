@@ -112,13 +112,13 @@ func (a *AutoReviewer) ensureReviewersIDs(ctx context.Context) error {
 	updated := false
 	for _, reviewerGroup := range a.Repo.ReviewerGroups {
 		for _, reviewer := range reviewerGroup.Reviewers {
-			if reviewer.ID == "" {
+			if reviewer.AdoID == "" {
 				identity, err := utils.GetDevOpsIdentity(ctx, reviewer.Alias, a.adoIdentityClient)
 				if err != nil {
 					return err
 				}
 
-				reviewer.ID = identity.Id.String()
+				reviewer.AdoID = identity.Id.String()
 				updated = true
 			}
 		}
@@ -275,7 +275,7 @@ func (a *AutoReviewer) AddReviewers(ctx context.Context, pullRequestID int, repo
 	for _, reviewer := range append(required, optional...) {
 		_, err := a.adoGitClient.CreatePullRequestReviewer(ctx, adogit.CreatePullRequestReviewerArgs{
 			Reviewer: &adogit.IdentityRefWithVote{},
-			ReviewerId: &reviewer.ID,
+			ReviewerId: &reviewer.AdoID,
 			RepositoryId: &repoID,
 			PullRequestId: &pullRequestID,
 		})

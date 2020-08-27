@@ -59,10 +59,10 @@ type ReviewerGroup struct {
 	CurrentPos int         `json:"currentPos" bson:"currentPos,omitempty"`
 }
 
-// Reviewer is a vsts revier object
 type Reviewer struct {
-	Alias      string `json:"alias" bson:"alias,omitempty"`
-	ID         string `json:"id" bson:"id,omitempty"`
+	Alias          string `json:"alias" bson:"alias,omitempty"`
+	AdoID          string `json:"adoId" bson:"id,omitempty"`
+	Id 			   bson.ObjectId `json:"id" bson:"_id,omitempty"`
 	LastReviewTime time.Time
 }
 
@@ -95,7 +95,7 @@ func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID string) ([]*Reviewer
 func getNextReviewer(group *ReviewerGroup, pullRequestCreatorID string) *Reviewer {
 	defer group.incPos()
 
-	for len(group.Reviewers) > 1 && group.getCurrentReviewer().ID == pullRequestCreatorID {
+	for len(group.Reviewers) > 1 && group.getCurrentReviewer().AdoID == pullRequestCreatorID {
 
 		group.incPos()
 	}

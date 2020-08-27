@@ -486,8 +486,8 @@ func (s *Server) processReviewers(ctx context.Context, reviewerGroups types.Revi
 	for _, group := range reviewerGroups {
 		reviewers := make([]*types.Reviewer, 0)
 		for _, reviewer := range group.Reviewers {
-			// If the ID is already populated, continue
-			if reviewer.ID != "" {
+			// If the AdoID is already populated, continue
+			if reviewer.AdoID != "" {
 				reviewers = append(reviewers, reviewer)
 				continue
 			}
