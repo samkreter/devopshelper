@@ -65,6 +65,14 @@ func main() {
 	if err != nil {
 		logger.Fatal(err)
 	}
+	r, err := repoStore.PopLRUReviewer(ctx, []string{"segoings", "segoings2"})
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	fmt.Println(r)
+
+	return
 
 	conn := azuredevops.NewPatConnection(organizationUrl, adoPatToken)
 	adoGitClient, err := adogit.NewClient(ctx, conn)

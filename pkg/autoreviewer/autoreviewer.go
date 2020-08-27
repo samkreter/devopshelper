@@ -26,7 +26,7 @@ var (
 )
 
 // Filter is a function returns true if a pull request should be filtered out.
-type Filter func(adogit.GitPullRequest) bool
+type Filter func(*PullRequest) bool
 
 // ReviewerTrigger is called with the reviewers that have been selected. Allows for adding custom events
 //  for each reviewer that is added to the PR. Ex: slack notification.
@@ -81,7 +81,9 @@ func (a *AutoReviewer) Run(ctx context.Context) error {
 		return fmt.Errorf("get pull requests error: %v", err)
 	}
 
-	for _, pullRequest := range *pullRequests {
+	for _, pr := range *pullRequests {
+		pullRequest := &PullRequest{pr}
+
 		if a.shouldFilter(pullRequest) {
 			continue
 		}
@@ -156,7 +158,7 @@ func (a *AutoReviewer) ensureAdoRepoID(ctx context.Context) error{
 	return fmt.Errorf("repo: %s not found in project %s", a.Repo.Name, a.Repo.ProjectName)
 }
 
-func (a *AutoReviewer) shouldFilter(pr adogit.GitPullRequest) bool {
+func (a *AutoReviewer) shouldFilter(pr *PullRequest) bool {
 	for _, filter := range a.filters {
 		if filter(pr) {
 			return true
@@ -166,7 +168,26 @@ func (a *AutoReviewer) shouldFilter(pr adogit.GitPullRequest) bool {
 	return false
 }
 
-func (a *AutoReviewer) balanceReview(ctx context.Context, pr adogit.GitPullRequest) error {
+func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) error {
+	reviewerGroups, err := pr.GetReviewerGroups(ctx, a.adoGitClient)
+	if err != nil {
+		return err
+	}
+
+	// Get all required owners
+	owners := map[string]bool{}
+	groups := map[string]bool{}
+	for _, reviewerGroup := range reviewerGroups {
+		groups[reviewerGroup.Group] = true
+
+		for owner := range reviewerGroup.Owners {
+			owners[owner] = true
+		}
+	}
+	return nil
+}
+
+func (a *AutoReviewer) balanceReview(ctx context.Context, pr *PullRequest) error {
 	logger := log.G(ctx)
 
 	if a.ContainsReviewBalancerComment(ctx, pr.Repository.Id.String(),  *pr.PullRequestId) {
@@ -227,12 +248,10 @@ func (a *AutoReviewer) balanceReview(ctx context.Context, pr adogit.GitPullReque
 	return nil
 }
 
-
-
 // ContainsReviewBalancerComment checks if the passed in review has had a bot comment added.
 func (a *AutoReviewer) ContainsReviewBalancerComment(ctx context.Context, repositoryID string, pullRequestID int) bool {
 	threads, err := a.adoGitClient.GetThreads(ctx, adogit.GetThreadsArgs{
-		RepositoryId: &repositoryID, // TODO repalce with correct
+		RepositoryId: &repositoryID,
 		PullRequestId: &pullRequestID,
 	})
 	if err != nil {
@@ -279,7 +298,7 @@ func GetReviewersAlias(reviewers []*types.Reviewer) []string {
 	return aliases
 }
 
-func filterWIP(pr adogit.GitPullRequest) bool {
+func filterWIP(pr *PullRequest) bool {
 	if strings.Contains(*pr.Title, "WIP") {
 		return true
 	}
@@ -287,7 +306,7 @@ func filterWIP(pr adogit.GitPullRequest) bool {
 	return false
 }
 
-func filterMasterBranchOnly(pr adogit.GitPullRequest) bool {
+func filterMasterBranchOnly(pr *PullRequest) bool {
 	if strings.EqualFold(*pr.TargetRefName, "refs/heads/master") {
 		return false
 	}

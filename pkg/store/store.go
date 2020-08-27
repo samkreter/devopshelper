@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"time"
 
 	"github.com/samkreter/go-core/log"
 
 	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/txn"
 	"github.com/globalsign/mgo/bson"
 	"github.com/samkreter/devopshelper/pkg/types"
 )
@@ -18,15 +20,22 @@ import (
 const (
 	defaultBaseGroupCollectionName  = "basegroups"
 	defaultRepositoryCollectionName = "repositories"
+	defaultReviewerCollectionName = "reviewers"
 )
 
 var (
 	// ErrNotFound the error is not found
 	ErrNotFound = errors.New("record not found")
+
+	ErrTransactionAborted = errors.New("transaction aborted")
 )
+
 
 // RepositoryStore holds information for a repository
 type RepositoryStore interface {
+	PopLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
+	GetLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
+
 	// Repository Ops
 	AddRepository(ctx context.Context, repo *types.Repository) error
 	UpdateRepository(ctx context.Context, id string, repository *types.Repository) error
@@ -53,6 +62,7 @@ type MongoStoreOptions struct {
 	DBName               string
 	RepositoryCollection string
 	BaseGroupCollection  string
+	ReviewerCollection   string
 }
 
 // MongoStore implementation to interact with a mongo database
@@ -79,6 +89,10 @@ func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
 		return nil, errors.New("missing Mongo connection string")
 	}
 
+	if o.ReviewerCollection == "" {
+		o.ReviewerCollection = defaultReviewerCollectionName
+	}
+
 	if o.RepositoryCollection == "" {
 		o.RepositoryCollection = defaultRepositoryCollectionName
 	}
@@ -87,10 +101,11 @@ func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
 		o.BaseGroupCollection = defaultBaseGroupCollectionName
 	}
 
-	logger.Infof("MongoStore: Using DB: '%s' for mongo with RepoCollection: %s, BaseGroupCollection: %s",
+	logger.Infof("MongoStore: Using DB: '%s' for mongo with RepoCollection: %s, BaseGroupCollection: %s, ReviewerCollection: %s",
 		o.DBName,
 		o.RepositoryCollection,
-		o.BaseGroupCollection)
+		o.BaseGroupCollection,
+		o.ReviewerCollection)
 
 	var session *mgo.Session
 	var err error
@@ -140,6 +155,58 @@ func (ms *MongoStore) getCollection(collection string) (*mgo.Session, *mgo.Colle
 	session := ms.sesson.Copy()
 	col := session.DB(ms.Options.DBName).C(collection)
 	return session, col
+}
+
+
+func (ms *MongoStore) PopLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error) {
+	session, col := ms.getCollection(ms.Options.ReviewerCollection)
+	defer session.Close()
+
+	lruReviewer, err := ms.GetLRUReviewer(ctx, alias)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("#### Got lrureviewer")
+
+	runner := txn.NewRunner(col)
+	txn.DefaultRunnerOptions()
+	ops := []txn.Op{
+		{
+			C: ms.Options.ReviewerCollection,
+			Id: bson.M{"alias": lruReviewer.Alias},
+			Assert: bson.M{"lastReviewTime": lruReviewer.LastReviewTime.String()},
+			Update: bson.M{"lastReviewTime": time.Now().String()},
+		},
+	}
+	if err := runner.Run(ops, "", nil); err != nil {
+		switch err {
+		case txn.ErrAborted:
+			return nil, ErrTransactionAborted
+		default:
+			return nil, err
+		}
+	}
+
+	return lruReviewer, nil
+}
+
+func (ms *MongoStore) GetLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error) {
+	session, col := ms.getCollection(ms.Options.ReviewerCollection)
+	defer session.Close()
+
+	fmt.Println("#####: ", alias)
+
+	var reviewer types.Reviewer
+	err := col.Find(bson.M{"alias": bson.M{"$in": alias}}).Sort("-lastReviewTime").One(&reviewer)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &reviewer, nil
 }
 
 // AddRepository adds a repository to the mongo database

@@ -61,9 +61,9 @@ type ReviewerGroup struct {
 
 // Reviewer is a vsts revier object
 type Reviewer struct {
-	UniqueName string `json:"uniqueName" bson:"uniqueName,omitempty"`
 	Alias      string `json:"alias" bson:"alias,omitempty"`
 	ID         string `json:"id" bson:"id,omitempty"`
+	LastReviewTime time.Time
 }
 
 func (g *ReviewerGroup) getCurrentReviewer() *Reviewer {
