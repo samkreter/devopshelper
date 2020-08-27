@@ -14,6 +14,7 @@ require (
 	github.com/samkreter/vsts-goclient v0.0.3
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.6.0 // indirect
+	github.com/stretchr/testify v1.4.0
 	go.opencensus.io v0.22.4 // indirect
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
