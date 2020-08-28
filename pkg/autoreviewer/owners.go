@@ -15,7 +15,7 @@ import (
 const (
 	PrefixComment = ";"
 	PrefixNoNotify = "*"
-	PrefixGroup = "; GROUP: "
+	PrefixGroup = "; TEAM: "
 )
 
 var (
@@ -28,7 +28,7 @@ type PullRequest struct {
 
 type ReviewerGroup struct {
 	Owners map[string]bool
-	Group string
+	Team   string
 }
 
 // GetReviewerGroups gets all required reviewers from the owners files based on file changes in the PR.
@@ -175,7 +175,7 @@ func ParseOwnerFile(content string) *ReviewerGroup {
 		switch {
 		// Parse the reviewer group
 		case strings.HasPrefix(line, PrefixGroup):
-			ownersFile.Group = strings.TrimSpace(strings.TrimPrefix(line, PrefixGroup))
+			ownersFile.Team = strings.TrimSpace(strings.TrimPrefix(line, PrefixGroup))
 			continue
 
 		// Parse owners with the no notify prefix

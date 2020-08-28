@@ -18,7 +18,6 @@ import (
 )
 
 const (
-	defaultBaseGroupCollectionName  = "basegroups"
 	defaultRepositoryCollectionName = "repositories"
 	defaultReviewerCollectionName = "reviewers"
 )
@@ -46,13 +45,6 @@ type RepositoryStore interface {
 	GetRepositoryByID(ctx context.Context, id string) (*types.Repository, error)
 	GetAllRepositories(ctx context.Context) ([]*types.Repository, error)
 	GetRepositoryByName(ctx context.Context, name, project string) (*types.Repository, error)
-
-	// Base Group Ops
-	AddBaseGroup(ctx context.Context, name string, group *types.BaseGroup) error
-	UpdateBaseGroup(ctx context.Context, id string, group *types.BaseGroup) error
-	DeleteBaseGroup(ctx context.Context, id string) error
-	GetBaseGroupByName(ctx context.Context, name string) (*types.BaseGroup, error)
-	GetAllBaseGroups(ctx context.Context) ([]*types.BaseGroup, error)
 }
 
 // Validate the interface implementation
@@ -99,10 +91,6 @@ func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
 
 	if o.RepositoryCollection == "" {
 		o.RepositoryCollection = defaultRepositoryCollectionName
-	}
-
-	if o.BaseGroupCollection == "" {
-		o.BaseGroupCollection = defaultBaseGroupCollectionName
 	}
 
 	logger.Infof("MongoStore: Using DB: '%s' for mongo with RepoCollection: %s, BaseGroupCollection: %s, ReviewerCollection: %s",
@@ -332,32 +320,6 @@ func (ms *MongoStore) GetRepositoryByName(ctx context.Context, name, project str
 	return &repo, nil
 }
 
-// AddBaseGroup adds a base group into the database
-func (ms *MongoStore) AddBaseGroup(ctx context.Context, name string, group *types.BaseGroup) error {
-	session, col := ms.getCollection(ms.Options.BaseGroupCollection)
-	defer session.Close()
-
-	if err := col.Insert(group); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// UpdateBaseGroup updates a base group in the database
-func (ms *MongoStore) UpdateBaseGroup(ctx context.Context, id string, group *types.BaseGroup) error {
-	session, col := ms.getCollection(ms.Options.BaseGroupCollection)
-	defer session.Close()
-
-	bsonID := bson.ObjectIdHex(id)
-
-	if err := col.UpdateId(bsonID, group); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // DeleteBaseGroup deletes a base group from the database
 func (ms *MongoStore) DeleteBaseGroup(ctx context.Context, id string) error {
 	session, col := ms.getCollection(ms.Options.BaseGroupCollection)
@@ -370,41 +332,6 @@ func (ms *MongoStore) DeleteBaseGroup(ctx context.Context, id string) error {
 	}
 
 	return nil
-}
-
-// GetBaseGroupByName get a basegroup by name
-func (ms *MongoStore) GetBaseGroupByName(ctx context.Context, name string) (*types.BaseGroup, error) {
-	session, col := ms.getCollection(ms.Options.BaseGroupCollection)
-	defer session.Close()
-
-	var group types.BaseGroup
-	err := col.Find(bson.M{"name": name}).One(&group)
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-
-	return &group, nil
-}
-
-// GetAllBaseGroups gets all available base groups
-func (ms *MongoStore) GetAllBaseGroups(ctx context.Context) ([]*types.BaseGroup, error) {
-	session, col := ms.getCollection(ms.Options.RepositoryCollection)
-	defer session.Close()
-
-	var groups []*types.BaseGroup
-	err := col.Find(nil).All(&groups)
-	if err != nil {
-		return nil, err
-	}
-
-	if groups == nil {
-		return []*types.BaseGroup{}, nil
-	}
-
-	return groups, nil
 }
 
 // StripSSLFromURI removes the ssl from an URI

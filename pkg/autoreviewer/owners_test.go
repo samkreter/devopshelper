@@ -18,19 +18,19 @@ func TestParseOwnerFile(t *testing.T) {
 		ExpectedGroup string
 	}{
 		{Name: "Success Case",
-			TestOwners: []string{PrefixGroup+"Test Group", PrefixNoNotify+"testOwenr", "testNoNotifyOwner", ";this is a comment", ""},
+			TestOwners: []string{PrefixGroup+"Test Team", PrefixNoNotify+"testOwenr", "testNoNotifyOwner", ";this is a comment", ""},
 			ExpectedOwners: []string {"testOwenr", "testNoNotifyOwner"},
-			ExpectedGroup: "Test Group",
+			ExpectedGroup: "Test Team",
 		},
-		{Name: "No Group",
+		{Name: "No Team",
 			TestOwners: []string{"testOwenr", "testNoNotifyOwner", ";this is a comment", ""},
 			ExpectedOwners: []string {"testOwenr", "testNoNotifyOwner"},
 			ExpectedGroup: "",
 		},
 		{Name: "No Owners",
-			TestOwners: []string{PrefixGroup+"Test Group",";this is a comment", ""},
+			TestOwners: []string{PrefixGroup+"Test Team",";this is a comment", ""},
 			ExpectedOwners: []string {},
-			ExpectedGroup: "Test Group",
+			ExpectedGroup: "Test Team",
 		},
 		{Name: "No Owners or Groups",
 			TestOwners: []string{";this is a comment", ""},
@@ -45,7 +45,7 @@ func TestParseOwnerFile(t *testing.T) {
 			reviewerGroup := ParseOwnerFile(ownersFile)
 
 
-			assert.Equal(t,tt.ExpectedGroup, reviewerGroup.Group, "Group should be equal")
+			assert.Equal(t,tt.ExpectedGroup, reviewerGroup.Team, "Team should be equal")
 			assert.Equal(t, len(tt.ExpectedOwners), len(reviewerGroup.Owners), "Should have expected number owners")
 
 			for _, expectOwner := range tt.ExpectedOwners {
