@@ -12,7 +12,7 @@ const (
 	messageTemplate = "%s, you have a PR to review: %s"
 )
 
-type ReviwerTrigger func([]*types.Reviewer, string) error
+type ReviewerTrigger func([]*types.Reviewer, string) error
 
 // SlackConfig configuration for the slack reviwer trigger
 type SlackConfig struct {
@@ -22,7 +22,7 @@ type SlackConfig struct {
 }
 
 // NewSlackTrigger creates a new slack trigger to mention reviewers
-func NewSlackTrigger(config *SlackConfig) (ReviwerTrigger, error) {
+func NewSlackTrigger(config *SlackConfig) (ReviewerTrigger, error) {
 	c := NewClient(config.Token)
 
 	trigger := func(reviewers []*types.Reviewer, pullRequestURL string) error {

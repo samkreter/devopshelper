@@ -37,7 +37,7 @@ func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, ado
 
 	aReviewers := make([]*AutoReviewer, 0, len(repos))
 	for _, repo := range enabledRepos {
-		aReviewer, err := NewAutoReviewer(adoGitClient, aodIdentityClient, adoCoreClient, defaultBotIdentifier, repo, repoStore, defaultFilters, nil)
+		aReviewer, err := NewAutoReviewer(adoGitClient, aodIdentityClient, adoCoreClient, defaultBotIdentifier, repo, repoStore, Options{})
 		if err != nil {
 			return nil, err
 		}

@@ -66,31 +66,6 @@ func (s *Server) Run() {
 
 	router.Handle("/", http.FileServer(http.Dir("static")))
 
-	// Base Groups
-	router.HandleFunc("/api/basegroups", s.GetBaseGroups).Methods("GET")
-	router.HandleFunc("/api/basegroups/{baseGroupName}", s.GetBaseGroup).Methods("GET")
-	router.HandleFunc("/api/basegroups/{baseGroupName}", s.PutBaseGroup).Methods("PUT")
-	router.HandleFunc("/api/basegroups/{baseGroupName}", s.DeleteBaseGroup).Methods("DELETE")
-
-	// Repos
-	router.HandleFunc("/api/repositories", s.GetRepositories).Methods("GET")
-	router.HandleFunc("/api/repositories", s.PostRepository).Methods("POST")
-	router.HandleFunc("/api/projects/{project}/repositories", s.GetRepositoryPerProject).Methods("GET")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.GetRepository).Methods("GET")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.PutRepository).Methods("PUT")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}", s.DeleteRepository).Methods("DELETE")
-
-	// Reviewers
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers", s.GetReviewerGroupToRepository).Methods("GET")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers", s.AddReviewerToRepository).Methods("POST")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/reviewGroups/{reviewGroup}/reviewers/{reviewerAlias}", s.DeleteReviewerToRepository).Methods("DELETE")
-
-	// Repos Base Groups
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/basegroup/{basegroupName}", s.AddBaseGroupToRepository).Methods("PUT")
-
-	// Enable
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/enable", s.EnableRepository).Methods("POST")
-	router.HandleFunc("/api/projects/{project}/repositories/{repository}/disable", s.DisableRepository).Methods("POST")
 	router.PathPrefix("/").HandlerFunc(s.catchAllHandler)
 
 	// Add authentication handler
