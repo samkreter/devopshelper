@@ -1,11 +1,13 @@
 package utils
 
 import (
-	"fmt"
 	"context"
+	"fmt"
+	"strings"
+	"time"
 
-	"github.com/samkreter/devopshelper/pkg/types"
 	adoIdentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
+	"github.com/samkreter/devopshelper/pkg/types"
 )
 
 
@@ -23,7 +25,8 @@ func GetReviewerFromAlias(ctx context.Context, alias string, adoIdentityClient a
 
 	return &types.Reviewer{
 		Alias: alias,
-		ID:    identity.Id.String(),
+		AdoID: identity.Id.String(),
+		LastReviewTime: time.Time{},
 	}, nil
 }
 
@@ -37,9 +40,41 @@ func GetDevOpsIdentity(ctx context.Context, alias string, adoIdentityClient adoI
 		return nil, err
 	}
 
-	if len(*identities) != 1 {
-		return nil, fmt.Errorf("Found multiple identities for alias '%s'", alias)
+	if len(*identities) == 0 {
+		return nil, fmt.Errorf("no ado identities found for alias: %s", alias)
 	}
 
-	return &(*identities)[0], nil
+	if len(*identities) == 1 {
+		return &(*identities)[0], nil
+	}
+
+	for _, identity := range *identities {
+		identityAlias, err := getIdentityAlias(identity)
+		if err != nil {
+			return nil,  err
+		}
+		if strings.EqualFold(identityAlias, alias) {
+			return &identity, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no ado identities found for alias: %s", alias)
+}
+
+func getIdentityAlias(identity adoIdentity.Identity) (string, error) {
+	properties, ok := identity.Properties.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("malformed identity")
+	}
+	directory, ok := properties["DirectoryAlias"].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("malformed identity")
+	}
+
+	alias, ok := directory["$value"].(string)
+	if !ok {
+		return "", fmt.Errorf("malformed identity")
+	}
+
+	return alias, nil
 }

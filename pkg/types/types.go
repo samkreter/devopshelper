@@ -33,6 +33,7 @@ type Repository struct {
 	Enabled        bool           `json:"enabled" bson:"enabled,omitempty"`
 	Owners         []string       `json:"owners" bson:"owners,omitempty"`
 	AdoRepoID      string         `json:"AdoRepoID" bson: "AdoRepoID,omitempty"`
+	LastReconciled time.Time
 }
 
 // BaseGroup holds the base groups to be added or removed from a repo
@@ -59,11 +60,11 @@ type ReviewerGroup struct {
 	CurrentPos int         `json:"currentPos" bson:"currentPos,omitempty"`
 }
 
-// Reviewer is a vsts revier object
 type Reviewer struct {
-	UniqueName string `json:"uniqueName" bson:"uniqueName,omitempty"`
-	Alias      string `json:"alias" bson:"alias,omitempty"`
-	ID         string `json:"id" bson:"id,omitempty"`
+	Alias          string `json:"alias" bson:"alias,omitempty"`
+	AdoID          string `json:"adoId" bson:"id,omitempty"`
+	Id 			   bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	LastReviewTime time.Time
 }
 
 func (g *ReviewerGroup) getCurrentReviewer() *Reviewer {
@@ -95,7 +96,7 @@ func (rg *ReviewerGroups) GetReviewers(pullRequestCreatorID string) ([]*Reviewer
 func getNextReviewer(group *ReviewerGroup, pullRequestCreatorID string) *Reviewer {
 	defer group.incPos()
 
-	for len(group.Reviewers) > 1 && group.getCurrentReviewer().ID == pullRequestCreatorID {
+	for len(group.Reviewers) > 1 && group.getCurrentReviewer().AdoID == pullRequestCreatorID {
 
 		group.incPos()
 	}

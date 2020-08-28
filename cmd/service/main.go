@@ -4,13 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	adocore "github.com/microsoft/azure-devops-go-api/azuredevops/core"
 	adoidentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
 	"strings"
 	"time"
 
-	"github.com/samkreter/go-core/log"
-	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
 	"github.com/microsoft/azure-devops-go-api/azuredevops"
+	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
+	"github.com/samkreter/go-core/log"
 
 	"github.com/samkreter/devopshelper/pkg/autoreviewer"
 	"github.com/samkreter/devopshelper/pkg/server"
@@ -77,25 +78,36 @@ func main() {
 		logger.Fatal(err)
 	}
 
+	adoCoreClient, err := adocore.NewClient(ctx, conn)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	// TODO: Handle errors
 	go func() {
 		logger.Info("Starting Reviewer Reconcile Loop....")
 
-		mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient, adoIdentityClient)
+		mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient, adoIdentityClient, adoCoreClient)
 		if err != nil {
 			logger.Errorf("Failed to create reviewer manager: %s", err)
+			return
 		}
-		mgr.Run(ctx)
+		if err := mgr.Run(ctx); err != nil {
+			logger.Fatal(err)
+		}
 		logger.Info("Finished Reviewing for all repositories")
 
 		for {
 			select {
 			case <-time.NewTicker(time.Minute * time.Duration(*reviewIntervalMin)).C:
-				mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient, adoIdentityClient)
+				mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient, adoIdentityClient, adoCoreClient)
 				if err != nil {
 					logger.Errorf("Failed to create reviewer manager: %s", err)
 					continue
 				}
-				mgr.Run(ctx)
+				if err := mgr.Run(ctx); err != nil {
+					logger.Fatal(err)
+				}
 				logger.Info("Finished Reviewing for all repositories")
 
 			case <-ctx.Done():
