@@ -3,6 +3,7 @@ package autoreviewer
 import (
 	"fmt"
 	"github.com/microsoft/azure-devops-go-api/azuredevops"
+	adocore "github.com/microsoft/azure-devops-go-api/azuredevops/core"
 	"path/filepath"
 	"context"
 	"errors"
@@ -43,7 +44,7 @@ func (pr *PullRequest) GetReviewerGroups(ctx context.Context,  client adogit.Cli
 	for _, path := range changePaths {
 		pathDir := filepath.Dir(path)
 		if ownerFilesMap[pathDir] == nil {
-			ownersFile, err := getOwnersFile(ctx, client, pr.Repository.Id.String(), path)
+			ownersFile, err := getEffectingOwnersFile(ctx, client, pr.Repository.Id.String(), path)
 			if err != nil {
 				return nil, err
 			}
@@ -61,27 +62,36 @@ func (pr *PullRequest) GetReviewerGroups(ctx context.Context,  client adogit.Cli
 }
 
 func getOwnersFile(ctx context.Context, client adogit.Client, repoID, path string) (*adogit.GitItem, error) {
+	item, err := client.GetItem(ctx, adogit.GetItemArgs{
+		RepositoryId:   &repoID,
+		Path:           &path,
+		IncludeContent: toBoolPtr(true),
+	})
+	if err != nil {
+		return nil, ParseADOError(err)
+	}
+
+	return item, nil
+}
+
+func getEffectingOwnersFile(ctx context.Context, client adogit.Client, repoID, path string) (*adogit.GitItem, error) {
 	dirPath := filepath.Dir(path)
 	ownersPath := filepath.Join(dirPath, "owners.txt")
 
-	item, err := client.GetItem(ctx, adogit.GetItemArgs{
-		RepositoryId:   &repoID,
-		Path:           &ownersPath,
-		IncludeContent: toBoolPtr(true),
-	})
+	ownersFile, err := getOwnersFile(ctx, client, repoID, ownersPath)
 	if err != nil {
 		switch ParseADOError(err) {
 		case errNotFound:
 			if dirPath == "/" {
 				return nil, errNotFound
 			}
-			return getOwnersFile(ctx, client, repoID, dirPath)
+			return getEffectingOwnersFile(ctx, client, repoID, dirPath)
 		default:
 			return nil, err
 		}
 	}
 
-	return item, nil
+	return ownersFile, nil
 }
 
 func (pr *PullRequest) GetAllChanges(ctx context.Context, client adogit.Client) ([]string, error) {
@@ -129,6 +139,23 @@ func getChangePaths(changes []adogit.GitPullRequestChange) ([]string, error) {
 	}
 
 	return paths, nil
+}
+
+func getTeamMembers(ctx context.Context, client adocore.Client, projectName, teamName string) ([]string, error){
+	members, err := client.GetTeamMembersWithExtendedProperties(ctx, adocore.GetTeamMembersWithExtendedPropertiesArgs{
+		ProjectId: &projectName,
+		TeamId:    &teamName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	reviewers := []string{}
+	for _, member := range *members {
+		reviewers = append(reviewers, *member.Identity.DirectoryAlias)
+	}
+
+	return reviewers, nil
 }
 
 func ParseOwnerFile(content string) *ReviewerGroup {

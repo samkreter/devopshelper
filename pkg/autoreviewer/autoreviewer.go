@@ -3,13 +3,16 @@ package autoreviewer
 import (
 	"context"
 	"fmt"
+	adocore "github.com/microsoft/azure-devops-go-api/azuredevops/core"
+	"github.com/pkg/errors"
+	"github.com/samkreter/devopshelper/pkg/utils"
 	"strings"
+	"time"
 
 	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
 	adoidentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
 	"github.com/samkreter/go-core/log"
 
-	"github.com/samkreter/devopshelper/pkg/utils"
 	"github.com/samkreter/devopshelper/pkg/store"
 	"github.com/samkreter/devopshelper/pkg/types"
 )
@@ -39,6 +42,7 @@ type AutoReviewer struct {
 	reviewerTriggers []ReviewerTrigger
 	adoGitClient     adogit.Client
 	adoIdentityClient adoidentity.Client
+	adoCoreClient adocore.Client
 	botIdentifier         string
 	Repo             *types.Repository
 	RepoStore        store.RepositoryStore
@@ -52,12 +56,14 @@ type ReviewerInfo struct {
 }
 
 // NewAutoReviewer creates a new autoreviewer
-func NewAutoReviewer(adoGitClient adogit.Client, adoIdentityClient adoidentity.Client, botIdentifier string, repo *types.Repository, repoStore store.RepositoryStore, filters []Filter, rTriggers []ReviewerTrigger) (*AutoReviewer, error) {
+func NewAutoReviewer(adoGitClient adogit.Client,
+	adoIdentityClient adoidentity.Client, adoCoreClient adocore.Client, botIdentifier string, repo *types.Repository, repoStore store.RepositoryStore, filters []Filter, rTriggers []ReviewerTrigger) (*AutoReviewer, error) {
 	return &AutoReviewer{
 		Repo:              repo,
 		RepoStore:         repoStore,
 		adoGitClient:      adoGitClient,
 		adoIdentityClient: adoIdentityClient,
+		adoCoreClient:     adoCoreClient,
 		filters:           filters,
 		reviewerTriggers:  rTriggers,
 		botIdentifier:     botIdentifier,
@@ -67,10 +73,6 @@ func NewAutoReviewer(adoGitClient adogit.Client, adoIdentityClient adoidentity.C
 // Run starts the autoreviewer for a single instance
 func (a *AutoReviewer) Run(ctx context.Context) error {
 	logger := log.G(ctx)
-
-	if err := a.ensureRepo(ctx); err != nil {
-		return err
-	}
 
 	pullRequests, err := a.adoGitClient.GetPullRequests(ctx, adogit.GetPullRequestsArgs{
 		RepositoryId: &a.Repo.AdoRepoID,
@@ -96,44 +98,103 @@ func (a *AutoReviewer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (a *AutoReviewer) ensureRepo(ctx context.Context) error {
+func (a *AutoReviewer) Reconcile(ctx context.Context) error {
 	if err := a.ensureAdoRepoID(ctx); err != nil {
-		return err
+		return errors.Wrap(err, "failed to ensure repo id")
 	}
 
-	if err := a.ensureReviewersIDs(ctx); err != nil {
-		return err
+	if err := a.ensureReviewers(ctx); err != nil {
+		return errors.Wrap(err, "failed to ensure reviewers")
 	}
 
 	return nil
 }
 
-func (a *AutoReviewer) ensureReviewersIDs(ctx context.Context) error {
-	updated := false
-	for _, reviewerGroup := range a.Repo.ReviewerGroups {
-		for _, reviewer := range reviewerGroup.Reviewers {
-			if reviewer.AdoID == "" {
-				identity, err := utils.GetDevOpsIdentity(ctx, reviewer.Alias, a.adoIdentityClient)
-				if err != nil {
-					return err
-				}
+func (a *AutoReviewer) ensureReviewers(ctx context.Context) error {
+	logger := log.G(ctx)
+	logger.Infof("Starting repo reviewers reconciling for repo: %s", a.Repo.Name)
 
-				reviewer.AdoID = identity.Id.String()
-				updated = true
+	items, err := a.adoGitClient.GetItems(ctx, adogit.GetItemsArgs{
+		RepositoryId:   &a.Repo.AdoRepoID,
+		RecursionLevel: &adogit.VersionControlRecursionTypeValues.Full,
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to get ownersfiles")
+	}
+
+	// Get all reviewer groups for the repo
+	reviewerAliases := map[string]bool{}
+	for _, item := range *items {
+		if !strings.Contains(*item.Path, "owners.txt") {
+			continue
+		}
+
+		ownersFile, err := getOwnersFile(ctx, a.adoGitClient, a.Repo.AdoRepoID, *item.Path)
+		if err != nil {
+			return err
+		}
+
+		reviewerGroup :=  ParseOwnerFile(*ownersFile.Content)
+
+		for owner := range reviewerGroup.Owners {
+			reviewerAliases[owner] = true
+		}
+
+		if reviewerGroup.Group != "" {
+			members, err := getTeamMembers(ctx, a.adoCoreClient, a.Repo.ProjectName, reviewerGroup.Group)
+			if err != nil {
+				return errors.Wrap(err, "failed to get team memebers")
+			}
+
+			for _, member := range members {
+				reviewerAliases[member] = true
 			}
 		}
 	}
 
-	if updated {
-		if err := a.RepoStore.UpdateRepository(ctx, a.Repo.ID.String(), a.Repo); err != nil {
-			return err
+	// ensure reviewers are up to date in the DB
+	for alias := range reviewerAliases {
+		reviewer, err := a.RepoStore.GetReviewer(ctx, alias)
+		if err != nil {
+			switch err {
+			// Add the reviewer if it doens't exist
+			case store.ErrNotFound:
+				reviewer, err := utils.GetReviewerFromAlias(ctx, alias, a.adoIdentityClient)
+				if err != nil {
+					return errors.Wrap(err, "failed to get reviewer from alias")
+				}
+				a.RepoStore.AddReviewer(ctx, reviewer)
+				logger.Infof("Adding new reviwer: %s", alias)
+				continue
+			default:
+				return errors.Wrap(err, "failed to get reviewer from store")
+			}
 		}
+
+		// ensure we have the ADO ID
+		if reviewer.AdoID == "" {
+			reviewer, err := utils.GetReviewerFromAlias(ctx, alias, a.adoIdentityClient)
+			if err != nil {
+				return err
+			}
+			a.RepoStore.UpdateReviewer(ctx, reviewer)
+			logger.Infof("Updating reviewer: %q with ado id", alias)
+			continue
+		}
+	}
+
+	a.Repo.LastReconciled = time.Now().UTC()
+	if err := a.RepoStore.UpdateRepository(ctx,a.Repo.ID.Hex(), a.Repo); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func (a *AutoReviewer) ensureAdoRepoID(ctx context.Context) error{
+	logger := log.G(ctx)
+	logger.Infof("Starting Repo ID reconciling for repo: %s", a.Repo.Name)
+
 	if a.Repo.AdoRepoID != "" {
 		return nil
 	}
@@ -168,6 +229,7 @@ func (a *AutoReviewer) shouldFilter(pr *PullRequest) bool {
 	return false
 }
 
+
 func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) error {
 	reviewerGroups, err := pr.GetReviewerGroups(ctx, a.adoGitClient)
 	if err != nil {
@@ -184,6 +246,7 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) error 
 			owners[owner] = true
 		}
 	}
+
 	return nil
 }
 
@@ -261,6 +324,9 @@ func (a *AutoReviewer) ContainsReviewBalancerComment(ctx context.Context, reposi
 	if threads != nil {
 		for _, thread := range *threads {
 			for _, comment := range *thread.Comments {
+				if comment.Content == nil {
+					continue
+				}
 				if strings.Contains(*comment.Content, a.botIdentifier) {
 					return true
 				}

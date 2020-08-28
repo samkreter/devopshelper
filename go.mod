@@ -9,6 +9,7 @@ require (
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/nlopes/slack v0.6.0
+	github.com/pkg/errors v0.8.0
 	github.com/rs/cors v1.7.0
 	github.com/samkreter/go-core v0.1.0
 	github.com/samkreter/vsts-goclient v0.0.3

@@ -36,6 +36,8 @@ type RepositoryStore interface {
 	PopLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
 	GetLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
 	AddReviewer(ctx context.Context, reviewer *types.Reviewer) error
+	GetReviewer(ctx context.Context, alias string) (*types.Reviewer, error)
+	UpdateReviewer(ctx context.Context, reviewer *types.Reviewer) error
 
 	// Repository Ops
 	AddRepository(ctx context.Context, repo *types.Repository) error
@@ -159,9 +161,9 @@ func (ms *MongoStore) getCollection(collection string) (*mgo.Session, *mgo.Colle
 	return session, col
 }
 
-
 func (ms *MongoStore) PopLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error) {
 	// Lock, trying to fake a transaction using mongo
+	// TODO: Create an actual concurrency solution i.e: stop using Cosmos mongo driver :)
 	ms.reviewerWriteLock.Lock()
 	defer ms.reviewerWriteLock.Unlock()
 
@@ -185,8 +187,6 @@ func (ms *MongoStore) PopLRUReviewer(ctx context.Context, alias []string) (*type
 func (ms *MongoStore) GetLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error) {
 	session, col := ms.getCollection(ms.Options.ReviewerCollection)
 	defer session.Close()
-
-	fmt.Println("#####: ", alias, "col: ", col.Name)
 
 	var reviewer types.Reviewer
 	err := col.Find(bson.M{"alias": bson.M{"$in": alias}}).Sort("-lastreviewtime").One(&reviewer)
@@ -216,10 +216,26 @@ func (ms *MongoStore) UpdateReviewer(ctx context.Context, reviewer *types.Review
 	defer session.Close()
 
 	if err := col.UpdateId(reviewer.Id, reviewer); err != nil {
-		return fmt.Errorf("MongoStore.UpdateReviewer: %v", err)
+		return err
 	}
 
 	return nil
+}
+
+func (ms *MongoStore) GetReviewer(ctx context.Context, alias string) (*types.Reviewer, error) {
+	session, col := ms.getCollection(ms.Options.ReviewerCollection)
+	defer session.Close()
+
+	var reviewer types.Reviewer
+	err := col.Find(bson.M{"alias": alias}).One(&reviewer)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &reviewer, nil
 }
 
 // AddRepository adds a repository to the mongo database

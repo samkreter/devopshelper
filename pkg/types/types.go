@@ -33,6 +33,7 @@ type Repository struct {
 	Enabled        bool           `json:"enabled" bson:"enabled,omitempty"`
 	Owners         []string       `json:"owners" bson:"owners,omitempty"`
 	AdoRepoID      string         `json:"AdoRepoID" bson: "AdoRepoID,omitempty"`
+	LastReconciled time.Time
 }
 
 // BaseGroup holds the base groups to be added or removed from a repo
