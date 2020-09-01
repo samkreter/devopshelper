@@ -10,6 +10,41 @@ import (
 )
 
 
+func TestParseEmailToAlias(t *testing.T){
+	tests := []struct {
+		Name string
+		Email string
+		ExpectedAlias string
+	}{
+		{
+			Name: "Success Case",
+			Email:         "test@gmail.com",
+			ExpectedAlias: "test",
+		},
+		{
+			Name: "Invalid Email: No Separator",
+			Email: "test",
+			ExpectedAlias: "",
+		},
+		{
+			Name: "Invalid Email: Extra Separators",
+			Email: "test@tester@gmail.com",
+			ExpectedAlias: "",
+		},
+		{
+			Name: "Empty Email",
+			Email: "",
+			ExpectedAlias: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			alias := parseEmailToAlias(tt.Email)
+			assert.Equal(t, tt.ExpectedAlias, alias, "Should get expected alias.")
+		})
+	}
+}
+
 func TestParseOwnerFile(t *testing.T) {
 	tests := []struct {
 		Name string
@@ -42,7 +77,7 @@ func TestParseOwnerFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			ownersFile := generateTestOwnersFile(tt.TestOwners)
-			reviewerGroup := ParseOwnerFile(ownersFile)
+			reviewerGroup := newReviewerGroupFromOwnersFile(ownersFile)
 
 
 			assert.Equal(t,tt.ExpectedGroup, reviewerGroup.Team, "Team should be equal")

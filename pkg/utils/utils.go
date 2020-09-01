@@ -49,7 +49,7 @@ func GetDevOpsIdentity(ctx context.Context, alias string, adoIdentityClient adoI
 	}
 
 	for _, identity := range *identities {
-		identityAlias, err := getIdentityAlias(identity)
+		identityAlias, err := GetIdentityAlias(identity)
 		if err != nil {
 			return nil,  err
 		}
@@ -61,7 +61,7 @@ func GetDevOpsIdentity(ctx context.Context, alias string, adoIdentityClient adoI
 	return nil, fmt.Errorf("no ado identities found for alias: %s", alias)
 }
 
-func getIdentityAlias(identity adoIdentity.Identity) (string, error) {
+func GetIdentityAlias(identity adoIdentity.Identity) (string, error) {
 	properties, ok := identity.Properties.(map[string]interface{})
 	if !ok {
 		return "", fmt.Errorf("malformed identity")

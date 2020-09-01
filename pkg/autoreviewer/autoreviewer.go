@@ -25,6 +25,7 @@ var (
 	defaultFilters = []Filter{
 		filterWIP,
 		filterMasterBranchOnly,
+		filterATLPRs,
 	}
 )
 
@@ -74,8 +75,6 @@ func NewAutoReviewer(adoGitClient adogit.Client,
 
 // Run starts the autoreviewer for a single instance
 func (a *AutoReviewer) Run(ctx context.Context) error {
-	logger := log.G(ctx)
-
 	pullRequests, err := a.adoGitClient.GetPullRequests(ctx, adogit.GetPullRequestsArgs{
 		RepositoryId: &a.Repo.AdoRepoID,
 		Project: &a.Repo.ProjectName,
@@ -85,6 +84,8 @@ func (a *AutoReviewer) Run(ctx context.Context) error {
 		return fmt.Errorf("get pull requests error: %v", err)
 	}
 
+
+
 	for _, pr := range *pullRequests {
 		pullRequest := &PullRequest{pr}
 
@@ -93,7 +94,7 @@ func (a *AutoReviewer) Run(ctx context.Context) error {
 		}
 
 		if err := a.balanceReview(ctx, pullRequest); err != nil {
-			logger.Errorf("ERROR: balancing reviewers with error %v", err)
+			return errors.Wrap(err, "failed to balancer reviewers")
 		}
 	}
 
@@ -108,6 +109,42 @@ func (a *AutoReviewer) Reconcile(ctx context.Context) error {
 	if err := a.ensureReviewers(ctx); err != nil {
 		return errors.Wrap(err, "failed to ensure reviewers")
 	}
+
+	return nil
+}
+
+func (a *AutoReviewer) balanceReview(ctx context.Context, pr *PullRequest) error {
+	logger := log.G(ctx)
+
+	if a.ContainsReviewBalancerComment(ctx, pr.Repository.Id.String(),  *pr.PullRequestId) {
+		return nil
+	}
+
+	requiredReviewers, optionalReviewers, err := a.getReviewers(ctx, pr)
+	if err != nil {
+		return errors.Wrap(err, "failed to get reviewers")
+	}
+
+	if err := a.AddReviewers(ctx, *pr.PullRequestId, pr.Repository.Id.String(), requiredReviewers, optionalReviewers); err != nil {
+		return errors.Wrap(err, "failed to add reviewers to PR")
+	}
+
+	if err := a.addReviewerComment(ctx, pr, requiredReviewers); err != nil {
+		return errors.Wrap(err,"failed to add reviewer comment")
+	}
+
+	if a.Options.ReviewerTriggers != nil {
+		for _, rTrigger := range a.Options.ReviewerTriggers {
+			if err := rTrigger(requiredReviewers, optionalReviewers, *pr.Url); err != nil {
+				logger.Error(err)
+			}
+		}
+	}
+
+	logger.Infof("Successfully added %s as required reviewers and %s as observer to PR: %d",
+		GetReviewersAlias(requiredReviewers),
+		GetReviewersAlias(optionalReviewers),
+		*pr.PullRequestId)
 
 	return nil
 }
@@ -131,19 +168,19 @@ func (a *AutoReviewer) ensureReviewers(ctx context.Context) error {
 			continue
 		}
 
-		ownersFile, err := getOwnersFile(ctx, a.adoGitClient, a.Repo.AdoRepoID, *item.Path)
+		ownersFile, err := getFileFromADO(ctx, a.adoGitClient, a.Repo.AdoRepoID, *item.Path)
 		if err != nil {
 			return err
 		}
 
-		reviewerGroup :=  ParseOwnerFile(*ownersFile.Content)
+		reviewerGroup :=  newReviewerGroupFromOwnersFile(*ownersFile.Content)
 
 		for owner := range reviewerGroup.Owners {
 			reviewerAliases[owner] = true
 		}
 
 		if reviewerGroup.Team != "" {
-			members, err := getTeamMembers(ctx, a.adoCoreClient, a.Repo.ProjectName, reviewerGroup.Team)
+			members, err := a.getTeamMembers(ctx, reviewerGroup.Team)
 			if err != nil {
 				return errors.Wrap(err, "failed to get team memebers")
 			}
@@ -158,9 +195,9 @@ func (a *AutoReviewer) ensureReviewers(ctx context.Context) error {
 	for alias := range reviewerAliases {
 		reviewer, err := a.RepoStore.GetReviewer(ctx, alias)
 		if err != nil {
-			switch err {
+			switch {
 			// Add the reviewer if it doens't exist
-			case store.ErrNotFound:
+			case errors.Is(err, store.ErrNotFound):
 				reviewer, err := utils.GetReviewerFromAlias(ctx, alias, a.adoIdentityClient)
 				if err != nil {
 					return errors.Wrap(err, "failed to get reviewer from alias")
@@ -236,42 +273,51 @@ func (a *AutoReviewer) shouldFilter(pr *PullRequest) bool {
 }
 
 func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*types.Reviewer, []*types.Reviewer, error) {
-	reviewerGroups, err := pr.GetReviewerGroups(ctx, a.adoGitClient)
+	reviewerGroups, err := pr.GetRequiredReviewerGroups(ctx, a.adoGitClient)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "failed to get required reviewer groups")
 	}
 
-	requiredOwners := []string{}
+	requiredOwners := map[string]bool{}
 	requiredTeamMembers := map[string]bool{}
+
 	for _, reviewerGroup := range reviewerGroups {
+		if reviewerGroup == nil {
+			continue
+		}
+
 		if reviewerGroup.Team != "" {
-			members, err := getTeamMembers(ctx, a.adoCoreClient, a.Repo.ProjectName,reviewerGroup.Team)
+			teamMembers, err := a.getTeamMembers(ctx, reviewerGroup.Team)
 			if err != nil {
 				return nil, nil, errors.Wrap(err, "failed to get team members")
 			}
 
-			for _, member := range members {
+			for _, member := range teamMembers {
 				requiredTeamMembers[member] = true
 			}
 		}
 
-		for alias := range reviewerGroup.Owners {
-			requiredOwners = append(requiredOwners, alias)
-
-			// Remove owner from team members so they aren't added twice
-			delete(requiredTeamMembers, alias)
+		for owner := range reviewerGroup.Owners {
+			requiredOwners[owner] = true
 		}
 	}
 
-	// Get least recently used reviewer for each group
-	owner, err := a.RepoStore.PopLRUReviewer(ctx, requiredOwners)
-	if err != nil {
-		return nil, nil, err
+	// Ensure owners aren't in both groups
+	for owner := range requiredOwners {
+		delete(requiredTeamMembers, owner)
 	}
+
+	// Get least recently used reviewer for each group
+	owners := getAliases(requiredOwners)
+	owner, err := a.RepoStore.PopLRUReviewer(ctx, owners)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to get owner reviewer")
+	}
+
 	teamMembers := getAliases(requiredTeamMembers)
 	teamMember, err := a.RepoStore.PopLRUReviewer(ctx, teamMembers)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "failed to get team reviewer")
 	}
 
 	return []*types.Reviewer{owner, teamMember}, nil, nil
@@ -283,47 +329,13 @@ func getAliases(reviewers map[string]bool) []string {
 	}
 
 	aliases := make([]string, 0, len(reviewers))
-	for alias := range reviewers {
-		aliases = append(aliases, alias)
-	}
-
-	return aliases
-}
-
-func (a *AutoReviewer) balanceReview(ctx context.Context, pr *PullRequest) error {
-	logger := log.G(ctx)
-
-	if a.ContainsReviewBalancerComment(ctx, pr.Repository.Id.String(),  *pr.PullRequestId) {
-		return nil
-	}
-
-	requiredReviewers, optionalReviewers, err := a.getReviewers(ctx, pr)
-	if err != nil {
-		return err
-	}
-
-	if err := a.AddReviewers(ctx, *pr.PullRequestId, pr.Repository.Id.String(), requiredReviewers, optionalReviewers); err != nil {
-		return fmt.Errorf("add reviewers error: %v", err)
-	}
-
-	if err := a.addReviewerComment(ctx, pr, requiredReviewers); err != nil {
-		return err
-	}
-
-	logger.Infof("Adding %s as required reviewers and %s as observer to PR: %d",
-		GetReviewersAlias(requiredReviewers),
-		GetReviewersAlias(optionalReviewers),
-		*pr.PullRequestId)
-
-	if a.Options.ReviewerTriggers != nil {
-		for _, rTrigger := range a.Options.ReviewerTriggers {
-			if err := rTrigger(requiredReviewers, optionalReviewers, *pr.Url); err != nil {
-				logger.Error(err)
-			}
+	for alias, enabled := range reviewers {
+		if enabled {
+			aliases = append(aliases, alias)
 		}
 	}
 
-	return nil
+	return aliases
 }
 
 func (a *AutoReviewer) addReviewerComment(ctx context.Context, pr *PullRequest, required []*types.Reviewer) error {
@@ -427,6 +439,14 @@ func GetReviewersAlias(reviewers []*types.Reviewer) []string {
 
 func filterWIP(pr *PullRequest) bool {
 	if strings.Contains(*pr.Title, "WIP") {
+		return true
+	}
+
+	return false
+}
+
+func filterATLPRs(pr *PullRequest) bool {
+	if !strings.Contains(*pr.Title, "ATL") {
 		return true
 	}
 

@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -11,9 +10,10 @@ import (
 	"time"
 
 	"github.com/samkreter/go-core/log"
-
+	"github.com/pkg/errors"
 	"github.com/globalsign/mgo"
 	"github.com/globalsign/mgo/bson"
+
 	"github.com/samkreter/devopshelper/pkg/types"
 )
 
@@ -36,6 +36,7 @@ type RepositoryStore interface {
 	GetLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
 	AddReviewer(ctx context.Context, reviewer *types.Reviewer) error
 	GetReviewer(ctx context.Context, alias string) (*types.Reviewer, error)
+	GetReviewerByADOID(ctx context.Context, adoID string) (*types.Reviewer, error)
 	UpdateReviewer(ctx context.Context, reviewer *types.Reviewer) error
 
 	// Repository Ops
@@ -157,16 +158,13 @@ func (ms *MongoStore) PopLRUReviewer(ctx context.Context, alias []string) (*type
 
 	lruReviewer, err := ms.GetLRUReviewer(ctx, alias)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	lruReviewer.LastReviewTime = time.Now().UTC()
 
-	fmt.Printf("#### Got lrureviewer: %+v", lruReviewer)
-
-
 	if err := ms.UpdateReviewer(ctx, lruReviewer); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return lruReviewer, nil
@@ -177,12 +175,12 @@ func (ms *MongoStore) GetLRUReviewer(ctx context.Context, alias []string) (*type
 	defer session.Close()
 
 	var reviewer types.Reviewer
-	err := col.Find(bson.M{"alias": bson.M{"$in": alias}}).Sort("-lastreviewtime").One(&reviewer)
+	err := col.Find(bson.M{"alias": bson.M{"$in": alias}}).Sort("lastreviewtime").One(&reviewer)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, ErrNotFound
+			return nil, errors.WithStack(ErrNotFound)
 		}
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return &reviewer, nil
@@ -210,6 +208,22 @@ func (ms *MongoStore) UpdateReviewer(ctx context.Context, reviewer *types.Review
 	return nil
 }
 
+func (ms *MongoStore) GetReviewerByADOID(ctx context.Context, adoID string) (*types.Reviewer, error) {
+	session, col := ms.getCollection(ms.Options.ReviewerCollection)
+	defer session.Close()
+
+	var reviewer types.Reviewer
+	err := col.Find(bson.M{"id": adoID}).One(&reviewer)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, errors.WithStack(ErrNotFound)
+		}
+		return nil, errors.WithStack(err)
+	}
+
+	return &reviewer, nil
+}
+
 func (ms *MongoStore) GetReviewer(ctx context.Context, alias string) (*types.Reviewer, error) {
 	session, col := ms.getCollection(ms.Options.ReviewerCollection)
 	defer session.Close()
@@ -218,9 +232,9 @@ func (ms *MongoStore) GetReviewer(ctx context.Context, alias string) (*types.Rev
 	err := col.Find(bson.M{"alias": alias}).One(&reviewer)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, ErrNotFound
+			return nil, errors.WithStack(ErrNotFound)
 		}
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return &reviewer, nil
@@ -277,7 +291,7 @@ func (ms *MongoStore) GetRepositoryByID(ctx context.Context, id string) (*types.
 	err := col.Find(bson.M{"_id": bsonID}).One(&repo)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, ErrNotFound
+			return nil, errors.WithStack(ErrNotFound)
 		}
 		return nil, err
 	}
@@ -293,7 +307,7 @@ func (ms *MongoStore) GetAllRepositories(ctx context.Context) ([]*types.Reposito
 	var repos []*types.Repository
 	err := col.Find(nil).All(&repos)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	if repos == nil {
@@ -312,7 +326,7 @@ func (ms *MongoStore) GetRepositoryByName(ctx context.Context, name, project str
 	err := col.Find(bson.M{"name": name, "projectName": project}).One(&repo)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return nil, ErrNotFound
+			return nil, errors.WithStack(ErrNotFound)
 		}
 		return nil, err
 	}

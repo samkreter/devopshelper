@@ -1,15 +1,14 @@
 package autoreviewer
 
 import (
-	"fmt"
-	"github.com/microsoft/azure-devops-go-api/azuredevops"
-	adocore "github.com/microsoft/azure-devops-go-api/azuredevops/core"
-	"path/filepath"
 	"context"
-	"errors"
+	"path/filepath"
 	"strings"
 
+	"github.com/microsoft/azure-devops-go-api/azuredevops"
+	adocore "github.com/microsoft/azure-devops-go-api/azuredevops/core"
 	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -31,9 +30,9 @@ type ReviewerGroup struct {
 	Team   string
 }
 
-// GetReviewerGroups gets all required reviewers from the owners files based on file changes in the PR.
+// GetRequiredReviewerGroups gets all required reviewers from the owners files based on changes made in the PR.
 // TODO: Use cache for finding the owners files.
-func (pr *PullRequest) GetReviewerGroups(ctx context.Context,  client adogit.Client) ([]*ReviewerGroup, error) {
+func (pr *PullRequest) GetRequiredReviewerGroups(ctx context.Context,  client adogit.Client) ([]*ReviewerGroup, error) {
 	ownerFilesMap  := map[string]*ReviewerGroup{}
 
 	changePaths, err := pr.GetAllChanges(ctx, client)
@@ -43,13 +42,14 @@ func (pr *PullRequest) GetReviewerGroups(ctx context.Context,  client adogit.Cli
 
 	for _, path := range changePaths {
 		pathDir := filepath.Dir(path)
+
 		if ownerFilesMap[pathDir] == nil {
-			ownersFile, err := getEffectingOwnersFile(ctx, client, pr.Repository.Id.String(), path)
+			ownersFile, err := getRelatedOwnersFile(ctx, client, pr.Repository.Id.String(), path)
 			if err != nil {
 				return nil, err
 			}
 
-			ownerFilesMap[pathDir] = ParseOwnerFile(*ownersFile.Content)
+			ownerFilesMap[pathDir] = newReviewerGroupFromOwnersFile(*ownersFile.Content)
 		}
 	}
 
@@ -61,31 +61,20 @@ func (pr *PullRequest) GetReviewerGroups(ctx context.Context,  client adogit.Cli
 	return reviewerGroups, nil
 }
 
-func getOwnersFile(ctx context.Context, client adogit.Client, repoID, path string) (*adogit.GitItem, error) {
-	item, err := client.GetItem(ctx, adogit.GetItemArgs{
-		RepositoryId:   &repoID,
-		Path:           &path,
-		IncludeContent: toBoolPtr(true),
-	})
-	if err != nil {
-		return nil, ParseADOError(err)
-	}
-
-	return item, nil
-}
-
-func getEffectingOwnersFile(ctx context.Context, client adogit.Client, repoID, path string) (*adogit.GitItem, error) {
+// getRelatedOwnersFile returns the owners file that impacts this change. This is the owners file that is
+// the closest directory moving upwards.
+func getRelatedOwnersFile(ctx context.Context, client adogit.Client, repoID, path string) (*adogit.GitItem, error) {
 	dirPath := filepath.Dir(path)
 	ownersPath := filepath.Join(dirPath, "owners.txt")
 
-	ownersFile, err := getOwnersFile(ctx, client, repoID, ownersPath)
+	ownersFile, err := getFileFromADO(ctx, client, repoID, ownersPath)
 	if err != nil {
-		switch ParseADOError(err) {
-		case errNotFound:
+		switch {
+		case errors.Is(err, errNotFound):
 			if dirPath == "/" {
 				return nil, errNotFound
 			}
-			return getEffectingOwnersFile(ctx, client, repoID, dirPath)
+			return getRelatedOwnersFile(ctx, client, repoID, dirPath)
 		default:
 			return nil, err
 		}
@@ -94,6 +83,7 @@ func getEffectingOwnersFile(ctx context.Context, client adogit.Client, repoID, p
 	return ownersFile, nil
 }
 
+// GetAllChanges returns all changes from all iterations of the pull request
 func (pr *PullRequest) GetAllChanges(ctx context.Context, client adogit.Client) ([]string, error) {
 	repositoryID := pr.Repository.Id.String()
 	its, err := client.GetPullRequestIterations(ctx, adogit.GetPullRequestIterationsArgs{
@@ -101,7 +91,7 @@ func (pr *PullRequest) GetAllChanges(ctx context.Context, client adogit.Client) 
 		PullRequestId: pr.PullRequestId,
 	})
 	if err != nil {
-		return nil, err
+		return nil, ParseADOError(err)
 	}
 
 	iterationID := len(*its)
@@ -111,28 +101,29 @@ func (pr *PullRequest) GetAllChanges(ctx context.Context, client adogit.Client) 
 		IterationId:   &iterationID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, ParseADOError(err)
 	}
 
 	if changes.NextSkip != nil && *changes.NextSkip != 0 {
-		return nil, fmt.Errorf("next skiptoken is not 0, requires pagination") // TODO: handle pagination
+		return nil, errors.New("next skiptoken is not 0, requires pagination") // TODO: handle pagination
 	}
 
 	return getChangePaths(*changes.ChangeEntries)
 }
 
+// getChangePaths returns a slice of paths for each change
 func getChangePaths(changes []adogit.GitPullRequestChange) ([]string, error) {
 	var paths []string
 
 	for _, change := range changes {
 		item, ok := change.Item.(map[string]interface{})
 		if !ok {
-			return nil, fmt.Errorf("failed to cast Item")
+			return nil, errors.New("failed to cast Item")
 		}
 
 		path, ok := item["path"].(string)
 		if !ok {
-			return nil, fmt.Errorf("failed to cast path")
+			return nil, errors.New("failed to cast path")
 		}
 
 		paths = append(paths, path)
@@ -141,24 +132,8 @@ func getChangePaths(changes []adogit.GitPullRequestChange) ([]string, error) {
 	return paths, nil
 }
 
-func getTeamMembers(ctx context.Context, client adocore.Client, projectName, teamName string) ([]string, error){
-	members, err := client.GetTeamMembersWithExtendedProperties(ctx, adocore.GetTeamMembersWithExtendedPropertiesArgs{
-		ProjectId: &projectName,
-		TeamId:    &teamName,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	reviewers := []string{}
-	for _, member := range *members {
-		reviewers = append(reviewers, *member.Identity.DirectoryAlias)
-	}
-
-	return reviewers, nil
-}
-
-func ParseOwnerFile(content string) *ReviewerGroup {
+// newReviewerGroupFromOwnersFile creates a reviewerGroup from an owners file
+func newReviewerGroupFromOwnersFile(content string) *ReviewerGroup {
 	lines := strings.Split(content, "\n")
 
 	ownersFile := ReviewerGroup{
@@ -197,19 +172,70 @@ func ParseOwnerFile(content string) *ReviewerGroup {
 	return &ownersFile
 }
 
+
+// getFileFromADO retrieves a file and its contents from ADO
+func getFileFromADO(ctx context.Context, client adogit.Client, repoID, path string) (*adogit.GitItem, error) {
+	item, err := client.GetItem(ctx, adogit.GetItemArgs{
+		RepositoryId:   &repoID,
+		Path:           &path,
+		IncludeContent: toBoolPtr(true),
+	})
+	if err != nil {
+		return nil, ParseADOError(err)
+	}
+
+	return item, nil
+}
+
+func parseEmailToAlias(email string ) string {
+	emailPtrs := strings.Split(email, "@")
+	if len(emailPtrs) != 2 {
+		return ""
+	}
+
+	return strings.TrimSpace(emailPtrs[0])
+}
+
+
+// getTeamMemberADOIDs returns the ADO IDs for team members
+func (a *AutoReviewer) getTeamMembers(ctx context.Context, teamName string) ([]string, error){
+	members, err := a.adoCoreClient.GetTeamMembersWithExtendedProperties(ctx, adocore.GetTeamMembersWithExtendedPropertiesArgs{
+		ProjectId: &a.Repo.ProjectName,
+		TeamId:    &teamName,
+	})
+	if err != nil {
+		return nil, ParseADOError(err)
+	}
+
+	if members == nil {
+		return []string{}, nil
+	}
+
+	var aliases []string
+	for _, member := range *members {
+		if member.Identity != nil && member.Identity.UniqueName != nil {
+			if alias := parseEmailToAlias(*member.Identity.UniqueName); alias != "" {
+				aliases = append(aliases, alias)
+			}
+		}
+	}
+
+	return aliases, nil
+}
+
+// ParseADOError converts ADO errors to internal errors
 func ParseADOError(err error) error {
 	adoErr, ok := err.(azuredevops.WrappedError)
 	if !ok {
-		return err
+		return errors.WithStack(err)
 	}
 
 	if adoErr.StatusCode != nil && *adoErr.StatusCode == 404 {
-		return errNotFound
+		return  errors.WithStack(errNotFound)
 	}
 
-	return err
+	return  errors.WithStack(err)
 }
-
 
 func toBoolPtr(val bool) *bool {
 	return &val

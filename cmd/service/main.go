@@ -4,14 +4,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	adocore "github.com/microsoft/azure-devops-go-api/azuredevops/core"
-	adoidentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
+	"github.com/pkg/errors"
 	"strings"
 	"time"
 
 	"github.com/microsoft/azure-devops-go-api/azuredevops"
 	adogit "github.com/microsoft/azure-devops-go-api/azuredevops/git"
 	"github.com/samkreter/go-core/log"
+	adocore "github.com/microsoft/azure-devops-go-api/azuredevops/core"
+	adoidentity "github.com/microsoft/azure-devops-go-api/azuredevops/identity"
 
 	"github.com/samkreter/devopshelper/pkg/autoreviewer"
 	"github.com/samkreter/devopshelper/pkg/server"
@@ -64,23 +65,24 @@ func main() {
 
 	repoStore, err := store.NewMongoStore(mongoOptions)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatal(AddStack(err))
+
 	}
 
 	conn := azuredevops.NewPatConnection(organizationUrl, adoPatToken)
 	adoGitClient, err := adogit.NewClient(ctx, conn)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatal(AddStack(err))
 	}
 
 	adoIdentityClient, err := adoidentity.NewClient(ctx, conn)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatal(AddStack(err))
 	}
 
 	adoCoreClient, err := adocore.NewClient(ctx, conn)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatal(AddStack(err))
 	}
 
 	// TODO: Handle errors
@@ -93,7 +95,7 @@ func main() {
 			return
 		}
 		if err := mgr.Run(ctx); err != nil {
-			logger.Fatal(err)
+			logger.Fatal(AddStack(err))
 		}
 		logger.Info("Finished Reviewing for all repositories")
 
@@ -106,7 +108,7 @@ func main() {
 					continue
 				}
 				if err := mgr.Run(ctx); err != nil {
-					logger.Fatal(err)
+					logger.Fatal(AddStack(err))
 				}
 				logger.Info("Finished Reviewing for all repositories")
 
@@ -119,10 +121,54 @@ func main() {
 
 	s, err := server.NewServer(adoGitClient, adoIdentityClient, repoStore, serverOptions)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Fatal(AddStack(err))
 	}
 
 	s.Run()
+}
+
+func AddStack(err error) error {
+	stack := getStackTrace(err)
+	if stack == "" {
+		return err
+	}
+
+	return fmt.Errorf("%w\n%s", err, stack)
+}
+
+type stackTracer interface {
+	StackTrace() errors.StackTrace
+}
+
+func getStackTrace(err error) string {
+	stErr := getBaseStackTracer(err)
+	if stErr != nil {
+		st := stErr.StackTrace()
+		return fmt.Sprintf("%+v", st)
+	}
+
+	return ""
+}
+
+func getBaseStackTracer(err error) stackTracer {
+	type unwrapper interface {
+		Unwrap() error
+	}
+
+	var baseST stackTracer
+
+	for err != nil {
+		if st, ok := err.(stackTracer); ok {
+			baseST = st
+		}
+
+		unwrappedErr, ok := err.(unwrapper)
+		if !ok {
+			break
+		}
+		err = unwrappedErr.Unwrap()
+	}
+	return baseST
 }
 
 
