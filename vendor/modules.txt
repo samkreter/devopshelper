@@ -1,5 +1,5 @@
-# github.com/antihax/optional v1.0.0
-github.com/antihax/optional
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
 # github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 github.com/globalsign/mgo
 github.com/globalsign/mgo/bson
@@ -8,8 +8,6 @@ github.com/globalsign/mgo/internal/sasl
 github.com/globalsign/mgo/internal/scram
 # github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6
 github.com/golang/groupcache/lru
-# github.com/golang/protobuf v1.3.1
-github.com/golang/protobuf/proto
 # github.com/google/uuid v1.1.1
 github.com/google/uuid
 # github.com/gorilla/mux v1.8.0
@@ -33,21 +31,22 @@ github.com/nlopes/slack
 github.com/nlopes/slack/internal/errorsx
 github.com/nlopes/slack/internal/timex
 github.com/nlopes/slack/slackutilsx
-# github.com/pkg/errors v0.8.0
+# github.com/pkg/errors v0.9.1
 github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
 # github.com/rs/cors v1.7.0
 github.com/rs/cors
 # github.com/samkreter/go-core v0.1.0
 github.com/samkreter/go-core/correlation
 github.com/samkreter/go-core/httputil
 github.com/samkreter/go-core/log
-# github.com/samkreter/vsts-goclient v0.0.3
-github.com/samkreter/vsts-goclient/api/git
-github.com/samkreter/vsts-goclient/client
 # github.com/satori/go.uuid v1.2.0
 github.com/satori/go.uuid
 # github.com/sirupsen/logrus v1.6.0
 github.com/sirupsen/logrus
+# github.com/stretchr/testify v1.4.0
+github.com/stretchr/testify/assert
 # go.opencensus.io v0.22.4
 go.opencensus.io
 go.opencensus.io/internal
@@ -65,19 +64,7 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# golang.org/x/net v0.0.0-20190620200207-3b0461eec859
-golang.org/x/net/context
-golang.org/x/net/context/ctxhttp
-# golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-golang.org/x/oauth2
-golang.org/x/oauth2/internal
 # golang.org/x/sys v0.0.0-20190502145724-3ef323f4f1fd
 golang.org/x/sys/unix
-# google.golang.org/appengine v1.4.0
-google.golang.org/appengine/internal
-google.golang.org/appengine/internal/base
-google.golang.org/appengine/internal/datastore
-google.golang.org/appengine/internal/log
-google.golang.org/appengine/internal/remote_api
-google.golang.org/appengine/internal/urlfetch
-google.golang.org/appengine/urlfetch
+# gopkg.in/yaml.v2 v2.2.2
+gopkg.in/yaml.v2

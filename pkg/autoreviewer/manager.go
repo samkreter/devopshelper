@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	DefaultReconcilePeriod = time.Hour * 24 * 7
+	DefaultReconcilePeriod = time.Hour * 24 * 1
 )
 
 type Manager struct {
@@ -55,7 +55,6 @@ func (m *Manager) Run(ctx context.Context) error {
 	logger := log.G(ctx)
 
 	for _, aReviewer := range m.AutoReviewers {
-
 		if aReviewer.Repo.LastReconciled.Add(DefaultReconcilePeriod).Before(time.Now()) {
 			logger.Infof("reconciling repo: %s......", aReviewer.Repo.Name)
 			if err := aReviewer.Reconcile(ctx); err != nil {
@@ -66,7 +65,8 @@ func (m *Manager) Run(ctx context.Context) error {
 
 		logger.Infof("Starting Reviewer for repo: %s/%s", aReviewer.Repo.ProjectName, aReviewer.Repo.Name)
 		if err := aReviewer.Run(ctx); err != nil {
-			logger.Errorf("Failed to balance repo: %s/%s with err: %v", aReviewer.Repo.ProjectName, aReviewer.Repo.Name, err)
+			return err
+			//logger.Errorf("Failed to balance repo: %s/%s with err: %v", aReviewer.Repo.ProjectName, aReviewer.Repo.Name, err)
 		}
 		logger.Infof("Finished Balancing Cycle for: %s/%s", aReviewer.Repo.ProjectName, aReviewer.Repo.Name)
 	}
