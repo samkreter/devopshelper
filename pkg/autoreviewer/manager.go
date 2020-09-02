@@ -22,7 +22,9 @@ type Manager struct {
 	repoStore store.RepositoryStore
 }
 
-func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, adoGitClient adogit.Client, aodIdentityClient adoidentity.Client, adoCoreClient adocore.Client) (*Manager, error) {
+func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, reviewerStore store.ReviewerStore,
+	adoGitClient adogit.Client, aodIdentityClient adoidentity.Client,
+	adoCoreClient adocore.Client) (*Manager, error) {
 	repos, err := repoStore.GetAllRepositories(ctx)
 	if err != nil {
 		return nil, err
@@ -37,7 +39,7 @@ func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, ado
 
 	aReviewers := make([]*AutoReviewer, 0, len(repos))
 	for _, repo := range enabledRepos {
-		aReviewer, err := NewAutoReviewer(adoGitClient, aodIdentityClient, adoCoreClient, defaultBotIdentifier, repo, repoStore, Options{})
+		aReviewer, err := NewAutoReviewer(adoGitClient, aodIdentityClient, adoCoreClient, defaultBotIdentifier, repo, repoStore,reviewerStore, Options{})
 		if err != nil {
 			return nil, err
 		}
