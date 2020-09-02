@@ -1,9 +1,8 @@
 
 
 REVIEWER_REPO="pskreter/vstsreviewer:1.0.12"
-TEST_SERVICE_REPO="pskreter/reviewer-service-test:0.0.17"
 
-SERVICE_REPO="pskreter/reviewer-service:0.0.21-alpha"
+SERVICE_REPO="pskreter/reviewer-service:0.0.4-beta"
 FRONTEND_REPO="pskreter/reviewer-frontend:0.0.9"
 
 
@@ -49,13 +48,12 @@ apiserver-run:
 	./bin/server --pat-token ${PAT_TOKEN} --mongo-uri ${MONGO_URI} --log-level debug --mongo-repo-collection=prodRepo
 
 apiserver-deploy:
-	helm install --name apiserver ./charts/apiserver --set apiserver.token=${PAT_TOKEN} \
+	helm install --upgrade --name apiserver ./charts/apiserver --set apiserver.token=${PAT_TOKEN} \
 		--set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${SERVICE_REPO}
 
 apiserver-upgrade:
-	helm upgrade --set apiserver.token=${PAT_TOKEN} \
-		--reuse-values \
+	helm upgrade --install --set apiserver.token=${PAT_TOKEN} \
 	   --set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${SERVICE_REPO} apiserver ./charts/apiserver
 

@@ -1,4 +1,4 @@
-FROM golang:1.9.2 as builder
+FROM golang:1.13.4 as builder
 WORKDIR  /go/src/github.com/samkreter/devopshelper/
 COPY . /go/src/github.com/samkreter/devopshelper/
 # RUN go test ./... -v
