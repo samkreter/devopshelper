@@ -47,7 +47,8 @@ func main() {
 
 	flag.StringVar(&mongoOptions.MongoURI, "mongo-uri", "", "connection string for the mongo database")
 	flag.StringVar(&mongoOptions.RepositoryCollection, "mongo-repo-collection", "", "collection that stores the repositories")
-	flag.StringVar(&mongoOptions.BaseGroupCollection, "mongo-basegroup-collection", "", "collection that stores the base groups")
+	flag.StringVar(&mongoOptions.TeamCollection, "mongo-team-collection", "", "collection that stores the teams")
+	flag.StringVar(&mongoOptions.ReviewerCollection, "mongo-reviewer-collection", "", "collection that stores the reviewers")
 	flag.StringVar(&mongoOptions.DBName, "mongo-dbname", "reviewerBot", "the mongo database to access")
 	flag.BoolVar(&mongoOptions.UseSSL, "mongo-ssl", false, "use ssl when accessing mongo database")
 
@@ -89,7 +90,7 @@ func main() {
 	go func() {
 		logger.Info("Starting Reviewer Reconcile Loop....")
 
-		mgr, err := autoreviewer.NewDefaultManager(ctx, mongoStore, mongoStore, adoGitClient, adoIdentityClient, adoCoreClient)
+		mgr, err := autoreviewer.NewDefaultManager(ctx, mongoStore, mongoStore, mongoStore, adoGitClient, adoIdentityClient, adoCoreClient)
 		if err != nil {
 			logger.Errorf("Failed to create reviewer manager: %s", err)
 			return
@@ -102,7 +103,7 @@ func main() {
 		for {
 			select {
 			case <-time.NewTicker(time.Minute * time.Duration(*reviewIntervalMin)).C:
-				mgr, err := autoreviewer.NewDefaultManager(ctx, mongoStore, mongoStore, adoGitClient, adoIdentityClient, adoCoreClient)
+				mgr, err := autoreviewer.NewDefaultManager(ctx, mongoStore, mongoStore, mongoStore, adoGitClient, adoIdentityClient, adoCoreClient)
 				if err != nil {
 					logger.Errorf("Failed to create reviewer manager: %s", err)
 					continue

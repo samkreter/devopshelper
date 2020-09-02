@@ -2,7 +2,7 @@
 
 REVIEWER_REPO="pskreter/vstsreviewer:1.0.12"
 
-SERVICE_REPO="pskreter/reviewer-service:0.0.4-beta"
+SERVICE_REPO="pskreter/reviewer-service:0.0.6"
 FRONTEND_REPO="pskreter/reviewer-frontend:0.0.9"
 
 

@@ -24,7 +24,6 @@ apiserver:
   username: sakreter
   mongouri: <insert-mongo-uri>
   repoCollection: prodRepo
-  baseGroupCollection: prodBaseGroup
   loglevel: debug
   dbname: reviewerBot
   admins: sakreter@microsoft.com,Samuel.Kreter@microsoft.com

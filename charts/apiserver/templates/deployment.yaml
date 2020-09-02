@@ -32,9 +32,6 @@ spec:
             {{- if .Values.apiserver.repoCollection }}
             - --mongo-repo-collection={{ .Values.apiserver.repoCollection }}
             {{- end }}
-            {{- if .Values.apiserver.baseGroupCollection }}
-            - --mongo-basegroup-collection={{ .Values.apiserver.baseGroupCollection }}
-            {{- end }}
             {{- if .Values.apiserver.loglevel }}
             - --log-level={{ .Values.apiserver.loglevel }}
             {{- end }}
