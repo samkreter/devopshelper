@@ -156,7 +156,7 @@ func (a *AutoReviewer) shouldFilter(pr *PullRequest) bool {
 func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*types.Reviewer, []*types.Reviewer, error) {
 	reviewerGroups, err := pr.GetRequiredReviewerGroups(ctx, a.adoGitClient)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get required reviewer groups")
+		return nil, nil, errors.Wrapf(err, "failed to get required reviewer groups for PR: %d", *pr.PullRequestId)
 	}
 
 	requiredOwners := map[string]bool{}
