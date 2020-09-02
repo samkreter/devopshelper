@@ -48,14 +48,6 @@ apiserver-run:
 	./bin/server --pat-token ${PAT_TOKEN} --mongo-uri ${MONGO_URI} --log-level debug --mongo-repo-collection=prodRepo
 
 apiserver-deploy:
-	helm install --upgrade --name apiserver ./charts/apiserver --set apiserver.token=${PAT_TOKEN} \
-		--set apiserver.mongouri=${MONGO_URI} \
-		--set apiserver.image=${SERVICE_REPO}
-
-apiserver-upgrade:
 	helm upgrade --install --set apiserver.token=${PAT_TOKEN} \
 	   --set apiserver.mongouri=${MONGO_URI} \
 		--set apiserver.image=${SERVICE_REPO} apiserver ./charts/apiserver
-
-
-
