@@ -59,8 +59,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	logger := log.G(ctx)
 
 	for _, aReviewer := range m.AutoReviewers {
-		if true {
-		//if aReviewer.Repo.LastReconciled.Add(DefaultReconcilePeriod).Before(time.Now()) {
+		if aReviewer.Repo.LastReconciled.Add(DefaultReconcilePeriod).Before(time.Now()) {
 			logger.Infof("reconciling repo: %s......", aReviewer.Repo.Name)
 			if err := aReviewer.Reconcile(ctx); err != nil {
 				return err

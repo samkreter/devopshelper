@@ -2,6 +2,7 @@ package autoreviewer
 
 import (
 	"context"
+	"github.com/samkreter/go-core/log"
 	"strings"
 
 	"github.com/microsoft/azure-devops-go-api/azuredevops"
@@ -61,18 +62,21 @@ func getFileFromADO(ctx context.Context, client adogit.Client, repoID, path stri
 }
 
 // getChangePaths returns a slice of paths for each change
-func getChangePaths(changes []adogit.GitPullRequestChange) ([]string, error) {
+func getChangePaths(ctx context.Context, changes []adogit.GitPullRequestChange) ([]string, error) {
+	logger := log.G(ctx)
 	var paths []string
 
 	for _, change := range changes {
 		item, ok := change.Item.(map[string]interface{})
 		if !ok {
-			return nil, errors.New("failed to cast Item")
+			logger.Warn("failed to case ADO Item")
+			continue
 		}
 
 		path, ok := item["path"].(string)
 		if !ok {
-			return nil, errors.New("failed to cast path")
+			logger.Warn("failed to case path to string from ADO changes")
+			continue
 		}
 
 		paths = append(paths, path)

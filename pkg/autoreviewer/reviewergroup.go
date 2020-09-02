@@ -2,6 +2,7 @@ package autoreviewer
 
 import (
 	"context"
+	"github.com/samkreter/go-core/log"
 	"path/filepath"
 	"strings"
 
@@ -83,6 +84,7 @@ func getRelatedOwnersFile(ctx context.Context, client adogit.Client, repoID, pat
 
 // GetAllChanges returns all changes from all iterations of the pull request
 func (pr *PullRequest) GetAllChanges(ctx context.Context, client adogit.Client) ([]string, error) {
+	logger := log.G(ctx)
 	repositoryID := pr.Repository.Id.String()
 	its, err := client.GetPullRequestIterations(ctx, adogit.GetPullRequestIterationsArgs{
 		RepositoryId:  &repositoryID,
@@ -93,20 +95,35 @@ func (pr *PullRequest) GetAllChanges(ctx context.Context, client adogit.Client) 
 	}
 
 	iterationID := len(*its)
-	changes, err := client.GetPullRequestIterationChanges(ctx, adogit.GetPullRequestIterationChangesArgs{
-		RepositoryId:  &repositoryID,
-		PullRequestId: pr.PullRequestId,
-		IterationId:   &iterationID,
-	})
-	if err != nil {
-		return nil, ParseADOError(err)
-	}
+	var paths []string
+	nextSkipToken := 0
+	// TODO: Add timeout here
+	for {
+		changes, err := client.GetPullRequestIterationChanges(ctx, adogit.GetPullRequestIterationChangesArgs{
+			RepositoryId:  &repositoryID,
+			PullRequestId: pr.PullRequestId,
+			IterationId:   &iterationID,
+			Skip: &nextSkipToken,
+		})
+		if err != nil {
+			return nil, ParseADOError(err)
+		}
 
-	if changes.NextSkip != nil && *changes.NextSkip != 0 {
-		return nil, errors.New("next skiptoken is not 0, requires pagination") // TODO: handle pagination
-	}
+		localPaths, err := getChangePaths(ctx, *changes.ChangeEntries)
+		if err != nil {
+			return nil, err
+		}
 
-	return getChangePaths(*changes.ChangeEntries)
+		if localPaths != nil {
+			paths = append(paths, localPaths...)
+		}
+
+		if changes.NextSkip == nil || *changes.NextSkip == 0 {
+			return paths, nil
+		}
+		nextSkipToken = *changes.NextSkip
+		logger.Infof("Getting skip token Changes with skip token %d", nextSkipToken)
+	}
 }
 
 // newReviewerGroupFromOwnersFile creates a reviewerGroup from an owners file
