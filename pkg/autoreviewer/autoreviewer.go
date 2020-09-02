@@ -22,7 +22,7 @@ var (
 	defaultFilters = []Filter{
 		filterWIP,
 		filterMasterBranchOnly,
-		filterBotV2PRs,
+		filterDraft,
 	}
 )
 
@@ -47,13 +47,15 @@ type AutoReviewer struct {
 	Repo             *types.Repository
 	RepoStore        store.RepositoryStore
 	ReviewerStore 	 store.ReviewerStore
+	TeamStore store.TeamStore
 	Options Options
 }
 
 // NewAutoReviewer creates a new autoreviewer
 func NewAutoReviewer(adoGitClient adogit.Client,
 	adoIdentityClient adoidentity.Client, adoCoreClient adocore.Client,
-	botIdentifier string, repo *types.Repository, repoStore store.RepositoryStore, reviewerStore store.ReviewerStore,
+	botIdentifier string, repo *types.Repository,
+	repoStore store.RepositoryStore, reviewerStore store.ReviewerStore, teamStore store.TeamStore,
 	options Options) (*AutoReviewer, error) {
 
 	if options.Filters == nil {
@@ -63,6 +65,7 @@ func NewAutoReviewer(adoGitClient adogit.Client,
 	return &AutoReviewer{
 		Repo:              repo,
 		RepoStore:         repoStore,
+		TeamStore: teamStore,
 		ReviewerStore: reviewerStore,
 		Options:           options,
 		adoGitClient:      adoGitClient,
@@ -164,13 +167,13 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*ty
 			continue
 		}
 
-		for team := range reviewerGroup.Teams {
-			teamMembers, err := a.getTeamMembers(ctx, team)
+		for teamName := range reviewerGroup.Teams {
+			team, err := a.TeamStore.GetTeam(ctx, teamName)
 			if err != nil {
-				return nil, nil, errors.Wrapf(err, "failed to get team members for team %q", team)
+				return nil, nil, errors.Wrapf(err, "failed to get team %q", teamName)
 			}
 
-			for _, member := range teamMembers {
+			for _, member := range team.Members {
 				requiredTeamMembers[member] = true
 			}
 		}
@@ -187,13 +190,13 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*ty
 
 	// Get least recently used reviewer for each group
 	owners := getAliases(requiredOwners)
-	owner, err := a.RepoStore.PopLRUReviewer(ctx, owners)
+	owner, err := a.ReviewerStore.PopLRUReviewer(ctx, owners)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "failed to get owner reviewer")
 	}
 
 	teamMembers := getAliases(requiredTeamMembers)
-	teamMember, err := a.RepoStore.PopLRUReviewer(ctx, teamMembers)
+	teamMember, err := a.ReviewerStore.PopLRUReviewer(ctx, teamMembers)
 	if err != nil {
 		switch {
 			case errors.Is(err, store.ErrNotFound):
@@ -328,12 +331,25 @@ func filterWIP(pr *PullRequest) bool {
 	return false
 }
 
-func filterBotV2PRs(pr *PullRequest) bool {
-	if !strings.Contains(*pr.Title, "BOTv2") {
+func filterDraft(pr *PullRequest) bool {
+	if pr.IsDraft != nil && *pr.IsDraft {
 		return true
 	}
 
 	return false
+}
+
+func filterBotV2PRs(pr *PullRequest) bool {
+	if pr == nil {
+		return true
+	}
+
+	prTitle := strings.ToLower(*pr.Title)
+	if strings.Contains(prTitle, "botv2") {
+		return false
+	}
+
+	return true
 }
 
 func filterMasterBranchOnly(pr *PullRequest) bool {

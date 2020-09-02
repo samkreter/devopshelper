@@ -22,7 +22,8 @@ type Manager struct {
 	repoStore store.RepositoryStore
 }
 
-func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, reviewerStore store.ReviewerStore,
+func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore,
+	reviewerStore store.ReviewerStore, teamStore store.TeamStore,
 	adoGitClient adogit.Client, aodIdentityClient adoidentity.Client,
 	adoCoreClient adocore.Client) (*Manager, error) {
 	repos, err := repoStore.GetAllRepositories(ctx)
@@ -39,7 +40,8 @@ func NewDefaultManager(ctx context.Context, repoStore store.RepositoryStore, rev
 
 	aReviewers := make([]*AutoReviewer, 0, len(repos))
 	for _, repo := range enabledRepos {
-		aReviewer, err := NewAutoReviewer(adoGitClient, aodIdentityClient, adoCoreClient, defaultBotIdentifier, repo, repoStore,reviewerStore, Options{})
+		aReviewer, err := NewAutoReviewer(adoGitClient, aodIdentityClient, adoCoreClient, defaultBotIdentifier,
+			repo, repoStore,reviewerStore, teamStore, Options{})
 		if err != nil {
 			return nil, err
 		}
@@ -57,7 +59,8 @@ func (m *Manager) Run(ctx context.Context) error {
 	logger := log.G(ctx)
 
 	for _, aReviewer := range m.AutoReviewers {
-		if aReviewer.Repo.LastReconciled.Add(DefaultReconcilePeriod).Before(time.Now()) {
+		if true {
+		//if aReviewer.Repo.LastReconciled.Add(DefaultReconcilePeriod).Before(time.Now()) {
 			logger.Infof("reconciling repo: %s......", aReviewer.Repo.Name)
 			if err := aReviewer.Reconcile(ctx); err != nil {
 				return err
@@ -68,7 +71,6 @@ func (m *Manager) Run(ctx context.Context) error {
 		logger.Infof("Starting Reviewer for repo: %s/%s", aReviewer.Repo.ProjectName, aReviewer.Repo.Name)
 		if err := aReviewer.Run(ctx); err != nil {
 			return err
-			//logger.Errorf("Failed to balance repo: %s/%s with err: %v", aReviewer.Repo.ProjectName, aReviewer.Repo.Name, err)
 		}
 		logger.Infof("Finished Balancing Cycle for: %s/%s", aReviewer.Repo.ProjectName, aReviewer.Repo.Name)
 	}

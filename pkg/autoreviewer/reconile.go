@@ -3,6 +3,7 @@ package autoreviewer
 import (
 	"context"
 	"fmt"
+	"github.com/samkreter/devopshelper/pkg/types"
 	"strings"
 	"time"
 
@@ -93,6 +94,10 @@ func (a *AutoReviewer) ensureReviewers(ctx context.Context) error {
 			for _, member := range members {
 				reviewerAliases[member] = true
 			}
+
+			if err := a.ensureTeam(ctx, team, members); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -133,4 +138,28 @@ func (a *AutoReviewer) ensureReviewers(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (a *AutoReviewer) ensureTeam(ctx context.Context, teamName string, members []string) error {
+	logger := log.G(ctx)
+
+	team, err := a.TeamStore.GetTeam(ctx, teamName)
+	if err != nil {
+		switch {
+		// Add the reviewer if it doesn't exist
+		case errors.Is(err, store.ErrNotFound):
+			team := &types.Team{
+				Name: teamName,
+				Members: members,
+			}
+			a.TeamStore.AddTeam(ctx, team)
+			logger.Infof("Adding new team: %s", teamName)
+			return nil
+		default:
+			return errors.Wrapf(err, "failed to get team: %q from store", teamName)
+		}
+	}
+
+	team.Members = members
+	return a.TeamStore.UpdateTeam(ctx, team)
 }
