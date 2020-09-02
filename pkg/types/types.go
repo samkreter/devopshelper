@@ -35,8 +35,14 @@ type Repository struct {
 }
 
 type Reviewer struct {
-	Alias          string `json:"alias" bson:"alias,omitempty"`
-	AdoID          string `json:"adoId" bson:"id,omitempty"`
-	Id 			   bson.ObjectId `json:"id" bson:"_id,omitempty"`
+	Alias          string        `json:"alias" bson:"alias,omitempty"`
+	AdoID          string        `json:"adoId" bson:"id,omitempty"`
+	ID             bson.ObjectId `json:"id" bson:"_id,omitempty"`
 	LastReviewTime time.Time
+}
+
+type Team struct {
+	ID      bson.ObjectId  `json:"id,omitempty" bson:"_id,omitempty"`
+	Name    string   `json:"name" bson:"name,omitempty"`
+	Members []string `json:"members" bson:"members"`
 }

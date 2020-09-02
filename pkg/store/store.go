@@ -20,6 +20,7 @@ import (
 const (
 	defaultRepositoryCollectionName = "repositories"
 	defaultReviewerCollectionName = "reviewers"
+	defaultTeamCollectionName = "teams"
 )
 
 var (
@@ -30,16 +31,23 @@ var (
 )
 
 
-// RepositoryStore holds information for a repository
-type RepositoryStore interface {
+type ReviewerStore interface {
 	PopLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
 	GetLRUReviewer(ctx context.Context, alias []string) (*types.Reviewer, error)
 	AddReviewer(ctx context.Context, reviewer *types.Reviewer) error
 	GetReviewer(ctx context.Context, alias string) (*types.Reviewer, error)
 	GetReviewerByADOID(ctx context.Context, adoID string) (*types.Reviewer, error)
 	UpdateReviewer(ctx context.Context, reviewer *types.Reviewer) error
+}
 
-	// Repository Ops
+type TeamStore interface {
+	AddTeam(ctx context.Context, team *types.Team) error
+	GetTeam(ctx context.Context, alias string) (*types.Team, error)
+	UpdateTeam(ctx context.Context, team *types.Team) error
+}
+
+// RepositoryStore holds information for a repository
+type RepositoryStore interface {
 	AddRepository(ctx context.Context, repo *types.Repository) error
 	UpdateRepository(ctx context.Context, id string, repository *types.Repository) error
 	DeleteRepository(ctx context.Context, id string) error
@@ -57,8 +65,8 @@ type MongoStoreOptions struct {
 	MongoURI             string
 	DBName               string
 	RepositoryCollection string
-	BaseGroupCollection  string
 	ReviewerCollection   string
+	TeamCollection string
 }
 
 // MongoStore implementation to interact with a mongo database
@@ -94,10 +102,14 @@ func NewMongoStore(o *MongoStoreOptions) (*MongoStore, error) {
 		o.RepositoryCollection = defaultRepositoryCollectionName
 	}
 
-	logger.Infof("MongoStore: Using DB: '%s' for mongo with RepoCollection: %s, BaseGroupCollection: %s, ReviewerCollection: %s",
+	if o.TeamCollection == "" {
+		o.TeamCollection = defaultTeamCollectionName
+	}
+
+	logger.Infof("MongoStore: Using DB: '%s' for mongo with RepoCollection: %s, TeamCollection: %s, ReviewerCollection: %s",
 		o.DBName,
 		o.RepositoryCollection,
-		o.BaseGroupCollection,
+		o.TeamCollection,
 		o.ReviewerCollection)
 
 	var session *mgo.Session
@@ -201,7 +213,7 @@ func (ms *MongoStore) UpdateReviewer(ctx context.Context, reviewer *types.Review
 	session, col := ms.getCollection(ms.Options.ReviewerCollection)
 	defer session.Close()
 
-	if err := col.UpdateId(reviewer.Id, reviewer); err != nil {
+	if err := col.UpdateId(reviewer.ID, reviewer); err != nil {
 		return err
 	}
 
@@ -238,6 +250,44 @@ func (ms *MongoStore) GetReviewer(ctx context.Context, alias string) (*types.Rev
 	}
 
 	return &reviewer, nil
+}
+
+func (ms *MongoStore) GetTeam(ctx context.Context, name string) (*types.Team, error) {
+	session, col := ms.getCollection(ms.Options.ReviewerCollection)
+	defer session.Close()
+
+	var team types.Team
+	err := col.Find(bson.M{"name": name}).One(&team)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil, errors.WithStack(ErrNotFound)
+		}
+		return nil, errors.WithStack(err)
+	}
+
+	return &team, nil
+}
+
+func (ms *MongoStore) AddTeam(ctx context.Context, team *types.Team) error {
+	session, col := ms.getCollection(ms.Options.TeamCollection)
+	defer session.Close()
+
+	if err := col.Insert(team); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ms *MongoStore) UpdateTeam(ctx context.Context, team *types.Team) error {
+	session, col := ms.getCollection(ms.Options.TeamCollection)
+	defer session.Close()
+
+	if err := col.UpdateId(team.ID, team); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // AddRepository adds a repository to the mongo database

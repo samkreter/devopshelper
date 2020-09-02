@@ -63,7 +63,7 @@ func main() {
 	
 	serverOptions.Admins = strings.Split(adminsStr, ",")
 
-	repoStore, err := store.NewMongoStore(mongoOptions)
+	mongoStore, err := store.NewMongoStore(mongoOptions)
 	if err != nil {
 		logger.Fatal(AddStack(err))
 
@@ -89,7 +89,7 @@ func main() {
 	go func() {
 		logger.Info("Starting Reviewer Reconcile Loop....")
 
-		mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient, adoIdentityClient, adoCoreClient)
+		mgr, err := autoreviewer.NewDefaultManager(ctx, mongoStore, mongoStore, adoGitClient, adoIdentityClient, adoCoreClient)
 		if err != nil {
 			logger.Errorf("Failed to create reviewer manager: %s", err)
 			return
@@ -102,7 +102,7 @@ func main() {
 		for {
 			select {
 			case <-time.NewTicker(time.Minute * time.Duration(*reviewIntervalMin)).C:
-				mgr, err := autoreviewer.NewDefaultManager(ctx, repoStore, adoGitClient, adoIdentityClient, adoCoreClient)
+				mgr, err := autoreviewer.NewDefaultManager(ctx, mongoStore, mongoStore, adoGitClient, adoIdentityClient, adoCoreClient)
 				if err != nil {
 					logger.Errorf("Failed to create reviewer manager: %s", err)
 					continue
@@ -119,7 +119,7 @@ func main() {
 		}
 	}()
 
-	s, err := server.NewServer(adoGitClient, adoIdentityClient, repoStore, serverOptions)
+	s, err := server.NewServer(adoGitClient, adoIdentityClient, mongoStore, serverOptions)
 	if err != nil {
 		logger.Fatal(AddStack(err))
 	}
