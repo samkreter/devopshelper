@@ -179,10 +179,10 @@ func (a *AutoReviewer) ensureReviewers(ctx context.Context) error {
 			reviewerAliases[owner] = true
 		}
 
-		if reviewerGroup.Team != "" {
-			members, err := a.getTeamMembers(ctx, reviewerGroup.Team)
+		for team := range reviewerGroup.Teams {
+			members, err := a.getTeamMembers(ctx, team)
 			if err != nil {
-				return errors.Wrap(err, "failed to get team memebers")
+				return errors.Wrapf(err, "failed to get team members for team: %s", team)
 			}
 
 			for _, member := range members {
@@ -286,10 +286,10 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*ty
 			continue
 		}
 
-		if reviewerGroup.Team != "" {
-			teamMembers, err := a.getTeamMembers(ctx, reviewerGroup.Team)
+		for team := range reviewerGroup.Teams {
+			teamMembers, err := a.getTeamMembers(ctx, team)
 			if err != nil {
-				return nil, nil, errors.Wrapf(err, "failed to get team members for team %q", reviewerGroup.Team)
+				return nil, nil, errors.Wrapf(err, "failed to get team members for team %q", team)
 			}
 
 			for _, member := range teamMembers {

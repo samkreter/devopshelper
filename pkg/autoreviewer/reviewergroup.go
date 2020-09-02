@@ -27,7 +27,7 @@ type PullRequest struct {
 
 type ReviewerGroup struct {
 	Owners map[string]bool
-	Team   string
+	Teams  map[string]bool
 }
 
 // GetRequiredReviewerGroups gets all required reviewers from the owners files based on changes made in the PR.
@@ -136,8 +136,9 @@ func getChangePaths(changes []adogit.GitPullRequestChange) ([]string, error) {
 func newReviewerGroupFromOwnersFile(content string) *ReviewerGroup {
 	lines := strings.Split(content, "\n")
 
-	ownersFile := ReviewerGroup{
+	reviewerGroup := ReviewerGroup{
 		Owners: map[string]bool{},
+		Teams: map[string]bool{},
 	}
 
 	for _, line := range lines {
@@ -150,13 +151,14 @@ func newReviewerGroupFromOwnersFile(content string) *ReviewerGroup {
 		switch {
 		// Parse the reviewer group
 		case strings.HasPrefix(line, PrefixGroup):
-			ownersFile.Team = strings.TrimSpace(strings.TrimPrefix(line, PrefixGroup))
+			team := strings.TrimSpace(strings.TrimPrefix(line, PrefixGroup))
+			reviewerGroup.Teams[team] = true
 			continue
 
 		// Parse owners with the no notify prefix
 		case strings.HasPrefix(line, PrefixNoNotify):
 			owner := strings.TrimSpace(strings.TrimPrefix(line, PrefixNoNotify))
-			ownersFile.Owners[owner] = true
+			reviewerGroup.Owners[owner] = true
 			continue
 
 		// Ignore comments
@@ -165,11 +167,11 @@ func newReviewerGroupFromOwnersFile(content string) *ReviewerGroup {
 
 		// Assume line without prefix is owner
 		default:
-			ownersFile.Owners[line] = true
+			reviewerGroup.Owners[line] = true
 		}
 	}
 
-	return &ownersFile
+	return &reviewerGroup
 }
 
 
