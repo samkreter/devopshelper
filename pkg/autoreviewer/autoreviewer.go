@@ -25,7 +25,7 @@ var (
 	defaultFilters = []Filter{
 		filterWIP,
 		filterMasterBranchOnly,
-		filterATLPRs,
+		filterBotV2PRs,
 	}
 )
 
@@ -179,10 +179,10 @@ func (a *AutoReviewer) ensureReviewers(ctx context.Context) error {
 			reviewerAliases[owner] = true
 		}
 
-		if reviewerGroup.Team != "" {
-			members, err := a.getTeamMembers(ctx, reviewerGroup.Team)
+		for team := range reviewerGroup.Teams {
+			members, err := a.getTeamMembers(ctx, team)
 			if err != nil {
-				return errors.Wrap(err, "failed to get team memebers")
+				return errors.Wrapf(err, "failed to get team members for team: %s", team)
 			}
 
 			for _, member := range members {
@@ -286,10 +286,10 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*ty
 			continue
 		}
 
-		if reviewerGroup.Team != "" {
-			teamMembers, err := a.getTeamMembers(ctx, reviewerGroup.Team)
+		for team := range reviewerGroup.Teams {
+			teamMembers, err := a.getTeamMembers(ctx, team)
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "failed to get team members")
+				return nil, nil, errors.Wrapf(err, "failed to get team members for team %q", team)
 			}
 
 			for _, member := range teamMembers {
@@ -317,7 +317,12 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*ty
 	teamMembers := getAliases(requiredTeamMembers)
 	teamMember, err := a.RepoStore.PopLRUReviewer(ctx, teamMembers)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get team reviewer")
+		switch {
+			case errors.Is(err, store.ErrNotFound):
+				return []*types.Reviewer{owner}, nil, nil
+		default:
+			return nil, nil, errors.Wrapf(err, "failed to get team reviewer for members: %v", teamMembers)
+		}
 	}
 
 	return []*types.Reviewer{owner, teamMember}, nil, nil
@@ -445,8 +450,8 @@ func filterWIP(pr *PullRequest) bool {
 	return false
 }
 
-func filterATLPRs(pr *PullRequest) bool {
-	if !strings.Contains(*pr.Title, "ATL") {
+func filterBotV2PRs(pr *PullRequest) bool {
+	if !strings.Contains(*pr.Title, "BOTv2") {
 		return true
 	}
 

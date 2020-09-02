@@ -47,30 +47,35 @@ func TestParseEmailToAlias(t *testing.T){
 
 func TestParseOwnerFile(t *testing.T) {
 	tests := []struct {
-		Name string
-		TestOwners []string
+		Name           string
+		TestOwners     []string
 		ExpectedOwners []string
-		ExpectedGroup string
+		ExpectedTeams  []string
 	}{
-		{Name: "Success Case",
-			TestOwners: []string{PrefixGroup+"Test Team", PrefixNoNotify+"testOwenr", "testNoNotifyOwner", ";this is a comment", ""},
+		{Name: "Success Case - Single Team",
+			TestOwners:     []string{PrefixGroup+"Test Team", PrefixNoNotify+"testOwenr", "testNoNotifyOwner", ";this is a comment", ""},
 			ExpectedOwners: []string {"testOwenr", "testNoNotifyOwner"},
-			ExpectedGroup: "Test Team",
+			ExpectedTeams:  []string{"Test Team"},
+		},
+		{Name: "Success Case - Multiple Team",
+			TestOwners:     []string{PrefixGroup+"Test Team", PrefixGroup+"Test Team2", PrefixNoNotify+"testOwenr", "testNoNotifyOwner", ";this is a comment", ""},
+			ExpectedOwners: []string {"testOwenr", "testNoNotifyOwner"},
+			ExpectedTeams:  []string{"Test Team", "Test Team2"},
 		},
 		{Name: "No Team",
-			TestOwners: []string{"testOwenr", "testNoNotifyOwner", ";this is a comment", ""},
+			TestOwners:     []string{"testOwenr", "testNoNotifyOwner", ";this is a comment", ""},
 			ExpectedOwners: []string {"testOwenr", "testNoNotifyOwner"},
-			ExpectedGroup: "",
+			ExpectedTeams:  []string{},
 		},
 		{Name: "No Owners",
-			TestOwners: []string{PrefixGroup+"Test Team",";this is a comment", ""},
+			TestOwners:     []string{PrefixGroup+"Test Team",";this is a comment", ""},
 			ExpectedOwners: []string {},
-			ExpectedGroup: "Test Team",
+			ExpectedTeams:  []string{"Test Team"},
 		},
 		{Name: "No Owners or Groups",
-			TestOwners: []string{";this is a comment", ""},
+			TestOwners:     []string{";this is a comment", ""},
 			ExpectedOwners: []string {},
-			ExpectedGroup: "",
+			ExpectedTeams:  []string{},
 		},
 	}
 
@@ -79,10 +84,12 @@ func TestParseOwnerFile(t *testing.T) {
 			ownersFile := generateTestOwnersFile(tt.TestOwners)
 			reviewerGroup := newReviewerGroupFromOwnersFile(ownersFile)
 
+			assert.Equal(t,len(tt.ExpectedTeams), len(reviewerGroup.Teams), "Should have expected number of teams")
+			for _, expectTeam := range tt.ExpectedTeams {
+				assert.True(t, reviewerGroup.Teams[expectTeam], "Should have correct teams")
+			}
 
-			assert.Equal(t,tt.ExpectedGroup, reviewerGroup.Team, "Team should be equal")
 			assert.Equal(t, len(tt.ExpectedOwners), len(reviewerGroup.Owners), "Should have expected number owners")
-
 			for _, expectOwner := range tt.ExpectedOwners {
 				assert.True(t, reviewerGroup.Owners[expectOwner], "Should have correct owners")
 			}
