@@ -184,6 +184,12 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*ty
 		}
 
 		for owner := range reviewerGroup.Owners {
+			// Ensure the owner is user and not a team
+			_, err := a.TeamStore.GetTeam(ctx, owner)
+			if err == nil {
+				continue
+			}
+
 			requiredOwners[owner] = true
 		}
 	}
