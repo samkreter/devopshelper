@@ -159,6 +159,11 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*ty
 		return nil, nil, errors.Wrapf(err, "failed to get required reviewer groups for PR: %d", *pr.PullRequestId)
 	}
 
+	prCreator, err := a.ReviewerStore.GetReviewerByADOID(ctx, *pr.CreatedBy.Id)
+	if err != nil && !errors.Is(err, store.ErrNotFound){
+		return nil, nil, errors.Wrapf(err, "failed to get pr creator %s from store", *pr.CreatedBy.DisplayName)
+	}
+
 	requiredOwners := map[string]bool{}
 	requiredTeamMembers := map[string]bool{}
 
@@ -183,30 +188,39 @@ func (a *AutoReviewer) getReviewers(ctx context.Context, pr *PullRequest) ([]*ty
 		}
 	}
 
+	// Remove PR creator from reviewer list
+	if prCreator != nil {
+		delete(requiredTeamMembers, prCreator.Alias)
+		delete(requiredOwners, prCreator.Alias)
+	}
+
 	// Ensure owners aren't in both groups
 	for owner := range requiredOwners {
 		delete(requiredTeamMembers, owner)
 	}
 
+	var finalReviewers []*types.Reviewer
+
 	// Get least recently used reviewer for each group
 	owners := getAliases(requiredOwners)
 	owner, err := a.ReviewerStore.PopLRUReviewer(ctx, owners)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to get owner reviewer")
+	if err != nil && !errors.Is(err, store.ErrNotFound){
+			return nil, nil, errors.Wrapf(err, "failed to get owner reviewer for owners: %v", owners)
+	}
+	if owner != nil {
+		finalReviewers = append(finalReviewers, owner)
 	}
 
 	teamMembers := getAliases(requiredTeamMembers)
 	teamMember, err := a.ReviewerStore.PopLRUReviewer(ctx, teamMembers)
-	if err != nil {
-		switch {
-			case errors.Is(err, store.ErrNotFound):
-				return []*types.Reviewer{owner}, nil, nil
-		default:
-			return nil, nil, errors.Wrapf(err, "failed to get team reviewer for members: %v", teamMembers)
-		}
+	if err != nil && !errors.Is(err, store.ErrNotFound){
+		return nil, nil, errors.Wrapf(err, "failed to get team reviewer for members: %v", teamMembers)
+	}
+	if teamMember != nil {
+		finalReviewers = append(finalReviewers, teamMember)
 	}
 
-	return []*types.Reviewer{owner, teamMember}, nil, nil
+	return finalReviewers, nil, nil
 }
 
 func getAliases(reviewers map[string]bool) []string {
